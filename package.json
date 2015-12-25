@@ -1,0 +1,17 @@
+{
+  "name": "textadventure",
+  "version": "0.0.1",
+  "description": "This is a javascript text-adventure engine i'm programming for an upcoming website project.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/david-alliet/textadventure.git"
+  },
+  "author": "David Alliet <davida.dc@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/david-alliet/textadventure/issues"
+  },
+  "homepage": "https://github.com/david-alliet/textadventure",
+  "devDependencies": {
+    "grunt": "^0.4.5"
+  }
+}
