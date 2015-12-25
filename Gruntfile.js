@@ -13,12 +13,19 @@ module.exports = function(grunt) {
                ext: ".css"
             }]
          }
+      },
+      watch: {
+         sass: {
+            files: ['scss/{,**/}*.{scss,sass}'],
+            tasks: ['sass']
+         }
       }
    });
 
    // Load plugins (example):
    grunt.loadNpmTasks('grunt-contrib-sass');
+   grunt.loadNpmTasks('grunt-contrib-watch');
 
    // Default task(s).
-   grunt.registerTask('default', ['sass']);
+   grunt.registerTask('default', ['watch']);
 };
