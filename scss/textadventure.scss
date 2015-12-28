@@ -1,0 +1,34 @@
+@import 'variables/colors';
+
+.dal-ta {
+  background: $lightgrey;
+  font-family: monospace;
+  width: 100%;
+
+  .dal-ta-output {
+  }
+
+  .dal-ta-input {
+    border-top: 1px $highlight solid;
+    width: 100%;
+
+    input {
+      background: $lightgrey;
+      border: 0;
+      box-sizing: border-box;
+      color: $highlight;
+      font-family: monospace;
+      font-size: 1.05em;
+      margin: 0;
+      padding: 1em;
+      width: 100%;
+
+      &:focus {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        outline: unset;
+      }
+    }
+  }
+}
