@@ -5,13 +5,9 @@ module.exports = function(grunt) {
       // valid configuration options go here
       sass: {
          dist: {
-            files: [{
-               expand: true,
-               cwd: 'scss',
-               src: ['*.scss'],
-               dest: "css",
-               ext: ".css"
-            }]
+            files: {
+               'css/main.css': 'scss/main.scss'
+            }
          }
       },
       watch: {
@@ -19,13 +15,25 @@ module.exports = function(grunt) {
             files: ['scss/{,**/}*.{scss,sass}'],
             tasks: ['sass']
          }
+      },
+      browserSync: {
+         bsFiles: {
+            src: ['css/*.css', 'js/*.js, index.html']
+         },
+         options: {
+            watchTask: true,
+            server: {
+               baseDir: './'
+            }
+         }
       }
    });
 
    // Load plugins (example):
    grunt.loadNpmTasks('grunt-contrib-sass');
    grunt.loadNpmTasks('grunt-contrib-watch');
+   grunt.loadNpmTasks('grunt-browser-sync');
 
    // Default task(s).
-   grunt.registerTask('default', ['watch']);
+   grunt.registerTask('default', ['browserSync', 'watch']);
 };
