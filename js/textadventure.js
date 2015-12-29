@@ -1,9 +1,19 @@
 // The main textadventure object that will hold most of the functionality to control the game
 var TextAdventure = (function (){
 
-  var container = null;
-  var inputField = null;
+  // properties of the Text Adventure
+  var title = "test";
+
+  // UI elements and properties
   var taHeight = 0;
+  var container = null;
+  var outputContainer = null;
+  var inputField = null;
+  var firstMessageDisplayed = false;
+
+  // some helper variables and objects
+  var timer = null;
+  var timerInterval = 10;
 
   // init the game, gets passed the <div> container and the desired height of the box
   function init(cid, h) {
@@ -18,7 +28,7 @@ var TextAdventure = (function (){
     container.innerHTML = "";
 
     // container for the output of the game
-    var outputContainer = document.createElement("div");
+    outputContainer = document.createElement("div");
     outputContainer.className = "dal-ta-output";
 
     // append container for output to dom
@@ -32,7 +42,7 @@ var TextAdventure = (function (){
     inputField = document.createElement("input");
     inputField.type = "text";
     inputField.name = "dal-ta-inputfield";
-    inputField.placeholder = "Enter command followed by RETURN";
+    inputField.placeholder = "Enter instruction followed by RETURN";
     inputField.autofocus = true;
     inputField.focus();
 
@@ -60,6 +70,77 @@ var TextAdventure = (function (){
     // set height of the text adventure container and its elements
     container.style.height = taHeight+"px";
     outputContainer.style.height = (taHeight - inputContainer.clientHeight)+"px";
+
+    // display the help information as initial message
+    displayHelp();
+  }
+
+  // parse incoming commands
+  function parseCommand(c) {
+    console.log("Received command : "+ c);
+
+    // convert the entire command into lower case
+    c = c.toLowerCase();
+    // break command into spaces
+    var cl = c.split(" ");
+
+    // evaluate command based on first element:
+    switch(cl[0]) {
+      case "help":
+        displayHelp();
+        break;
+
+      case "inventory":
+        displayInventory();
+        break;
+
+      case "move":
+        if(cl[1]===undefined) {
+          console.log("No move direction specified");
+        } else {
+          console.log("Moving in direction "+ cl[1]);
+        }
+        break;
+
+      default:
+        console.log("unknown command");
+        break;
+    }
+  }
+
+  function displayHelp() {
+    console.log("Displaying help");
+    var helpText = "<h2>Welcome to "+title+"</h2><p>Here is a list of instructions you can use to get started:</p>";
+    printLine(helpText);
+  }
+
+  function displayInventory() {
+    console.log("Displaying the inventory");
+    var inventoryText = "<h2>Inventory</h2>";
+    printLine(inventoryText);
+  }
+
+  // prints a line to the output container
+  function printLine(t) {
+    var item = document.createElement("div");
+    item.className = "dal-ta-output-item";
+    item.innerHTML = t;
+    outputContainer.appendChild(item);
+    // adjust the top padding of the first item so the printed message gets aligned at the bottom:
+    if(!firstMessageDisplayed) {
+      firstMessageDisplayed = true;
+      item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
+    }
+    // add some sort of navigation to bring the item into view
+    timer = window.setInterval(animateTransition, timerInterval);
+  }
+
+  function animateTransition(){
+    // scroll container up
+    if(outputContainer.clientHeight >= (outputContainer.scrollHeight - outputContainer.scrollTop))
+      window.clearInterval(timer);
+    else
+      outputContainer.scrollTop+=2;
   }
 
   // public function to expose the container object
@@ -72,44 +153,13 @@ var TextAdventure = (function (){
     return inputField;
   }
 
-  function parseCommand(c) {
-    console.log("Received command : "+ c);
-
-    // convert the entire command into lower case
-    c = c.toLowerCase();
-    // break command into spaces
-    var cl = c.split(" ");
-
-    // evaluate command based on first element:
-    switch(cl[0]) {
-        case "help":
-          console.log("Displaying help");
-          break;
-
-        case "inventory":
-          console.log("Displaying the inventory");
-          break;
-
-        case "move":
-          if(cl[1]===undefined) {
-            console.log("No move direction specified");
-          } else {
-            console.log("Moving in direction "+ cl[1]);
-          }
-          break;
-
-        default:
-          console.log("unknown command");
-          break;
-    }
-  }
-
   // expose the public functions in the return object
   return {
     init: init,
+    parseCommand: parseCommand,
+    printLine: printLine,
     getContainer: getContainer,
-    getInputField: getInputField,
-    parseCommand: parseCommand
+    getInputField: getInputField
   };
 
 })();

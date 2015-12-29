@@ -6,6 +6,37 @@
   width: 100%;
 
   .dal-ta-output {
+    box-sizing: content-box;
+    display: inline-block;
+    overflow: scroll;
+    vertical-align: bottom;
+    width: 100%;
+
+    .dal-ta-output-item {
+      border-bottom: 1px $mediumgrey dotted;
+      box-sizing: border-box;
+      color: $darkgrey;
+      padding: 1em;
+      width: 100%;
+
+      h2 {
+        color: $highlight;
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 0 0 .5em;
+        padding: 0;
+      }
+
+      p {
+        margin: .5em 0 0;
+        padding: 0;
+      }
+
+      &:last-child {
+        border-bottom: 0 none;
+      }
+
+    }
   }
 
   .dal-ta-input {
