@@ -35,7 +35,48 @@
       &:last-child {
         border-bottom: 0 none;
       }
+      &:after {
+        clear: both;
+        float: none;
+      }
 
+      dl {
+        margin: .5em 0;
+
+        dt {
+          box-sizing: border-box;
+          clear: left;
+          color: $highlight;
+          display: inline-block;
+          float: left;
+          margin: .25em 0;
+          padding-right: 1em;
+          text-align: right;
+          width: 20%;
+        }
+
+        dd {
+          box-sizing: border-box;
+          clear: right;
+          display: inline-block;
+          float: left;
+          margin: .25em 0;
+          padding: 0;
+          width: 80%;
+        }
+      }
+
+      &:after,
+      &:before {
+        content: ' ';
+        display: table;
+      }
+
+    }
+
+    &:after {
+      clear: both;
+      float: none;
     }
   }
 
