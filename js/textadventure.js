@@ -1,8 +1,10 @@
 // The main textadventure object that will hold most of the functionality to control the game
 var TextAdventure = (function (){
 
-  // properties of the Text Adventure
+  // properties and gamedata of the Text Adventure
   var title = "test";
+  var locations = {};
+  var activeLocation = "";
 
   // UI elements and properties
   var taHeight = 0;
@@ -16,12 +18,17 @@ var TextAdventure = (function (){
   var timerInterval = 10;
 
   // init the game, gets passed the <div> container and the desired height of the box
-  function init(cid, h) {
+  function init(cid, h, l) {
     console.log("Initializing text adventure");
     container = document.getElementById(cid);
     taHeight = h;
+    locations = l;
     prepareContainer();
+
+    // load location
+    gotoLocation(locations.startlocation);
   }
+
 
   // set up the text adventure container with all the neccesary UI elements
   function prepareContainer() {
@@ -43,7 +50,7 @@ var TextAdventure = (function (){
     inputField = document.createElement("input");
     inputField.type = "text";
     inputField.name = "dal-ta-inputfield";
-    inputField.placeholder = "Enter instruction followed by RETURN";
+    inputField.placeholder = "To proceed, type an instruction followed by RETURN";
     inputField.autofocus = true;
     inputField.focus();
 
@@ -95,11 +102,13 @@ var TextAdventure = (function (){
         displayInventory();
         break;
 
-      case "move":
+      case "go":
         if(cl[1]===undefined) {
-          console.log("No move direction specified");
+          printLine("Please specify where you want to go to.");
+        } else  if(cl[1]==="to") {
+          console.log("Moving to object "+ cl[2]);
         } else {
-          console.log("Moving in direction "+ cl[1]);
+          validateMoveDirection(cl[1]);
         }
         break;
 
@@ -110,6 +119,29 @@ var TextAdventure = (function (){
   }
 
 
+  // loads in a new locations
+  function gotoLocation(l) {
+    console.log("Moving to location "+ l);
+    activeLocation = l;
+    printLine(locations[activeLocation].text_on_visit);
+  }
+
+
+  // validate if a given direction is valid
+  function validateMoveDirection(d){
+    console.log("Testing direction "+ d +" for validity");
+    var valid = false;
+    for(var direction in locations[activeLocation].directions) {
+      //valid = true;
+      if(direction===d)
+        valid = true;
+    }
+
+    if(valid)
+      gotoLocation(locations[activeLocation].directions[d]);
+    else
+      printLine("That is not a possible direction to go to.");
+  }
 
 
   // shows the help information and command list
@@ -124,11 +156,14 @@ var TextAdventure = (function (){
       "inventory": {
         description: "Displays the items in your character's inventory"
       },
-      "move": {
-        description: "Move in a specific direction"
+      "go": {
+        description: "Go in a specific direction (or to a specific location or object)"
+      },
+      "pick up": {
+        description: "Pick up an object and put it in your inventory"
       },
       "use": {
-        description: "Use item a specific item"
+        description: "Use an object in your inventory (on a specific object)"
       }
     };
     helpText += buildDefinitionList(commandlist);
