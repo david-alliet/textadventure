@@ -104,7 +104,7 @@ var TextAdventure = (function (){
 
       case "go":
         if(cl[1]===undefined) {
-          printLine("Please specify where you want to go to.");
+          printLine("Please specify where you want to go.");
         } else  if(cl[1]==="to") {
           console.log("Moving to object "+ cl[2]);
         } else {
@@ -112,8 +112,40 @@ var TextAdventure = (function (){
         }
         break;
 
+      case "use":
+        // loop through words to see if there is an "on" modifier
+        var onPos;
+        for(var i=1; i<cl.length; i++) {
+          if(cl[i]==="on") {
+            onPos = i;
+          }
+        }
+        var objectPosEnd = (onPos===undefined) ? cl.length-1 : onPos-1;
+
+        // get string for object to use
+        var objectString = "";
+        for(i=1; i<=objectPosEnd; i++) {
+          objectString += cl[i]+" ";
+        }
+        objectString = objectString.trim();
+        console.log("Use object: "+ objectString);
+
+        // get string for object to use should be acted on
+        var objectOnString = "";
+        if(onPos!==undefined) {
+          for(i=onPos+1; i<cl.length; i++) {
+            objectOnString += cl[i]+" ";
+          }
+          objectOnString = objectOnString.trim();
+        }
+        console.log("Object to be used on: "+ objectOnString);
+
+        // check to see if object(s) to be used are valid
+        validateUse(objectString, objectOnString);
+        break;
+
       default:
-        console.log("unknown command");
+        printLine("That instruction wasn't understood.");
         break;
     }
   }
@@ -140,7 +172,27 @@ var TextAdventure = (function (){
     if(valid)
       gotoLocation(locations[activeLocation].directions[d]);
     else
-      printLine("That is not a possible direction to go to.");
+      printLine("That is not a possible direction.");
+  }
+
+
+  // validate if specified objects can be used
+  function validateUse(o, ou) {
+    console.log("Testing objects for valid use: "+ o +", "+ ou);
+    var validObject = false;
+    var validObjectUse = false;
+
+    // todo, check player inventory...
+
+    for(var object in locations[activeLocation].objects) {
+      if(object===o) {
+        objectToUse = locations[activeLocation].objects[object];
+        if(objectToUse.can_use) {
+          printLine(objectToUse.text_on_use);
+        }
+      }
+    }
+    //console.log(locations[activeLocation].objects[o]);
   }
 
 
@@ -191,6 +243,7 @@ var TextAdventure = (function (){
       item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
     }
     // add some sort of navigation to bring the item into view
+    window.clearInterval(timer);
     timer = window.setInterval(animateScroll, timerInterval);
   }
 
