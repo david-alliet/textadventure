@@ -14,7 +14,8 @@ var locations = {
         can_pickup: false,
         text_on_pickup: "",
         can_use_on_object: false,
-        text_on_use_object_on: ""
+        text_on_use_object_on: "",
+        remove_after_use: true
       }
     }
   },
@@ -42,7 +43,8 @@ var locations = {
         text_on_use: "",
         can_pickup: false,
         can_use_on_object: false,
-        text_on_use_object_on: ""
+        text_on_use_object_on: "",
+        remove_after_use: true
       },
       "teddy bear": {
         description: "A lonely teddy bear",
@@ -51,7 +53,8 @@ var locations = {
         can_pickup: true,
         text_on_pickup: "",
         can_use_on_object: "bed",
-        text_on_use_object_on: "you put the teddy bear on the bed, where it seemingly belongs."
+        text_on_use_object_on: "you put the teddy bear on the bed, where it seemingly belongs.",
+        remove_after_use: true
       }
     }
   },

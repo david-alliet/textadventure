@@ -38,6 +38,11 @@ var Player = (function() {
     inventory[id] = item;
   }
 
+  // delete an item from the inventory
+  function deleteItemFromInventory(id) {
+    delete inventory[id];
+  }
+
   // returns a specific item from the inventory based on an id
   function getItemFromInventory(id) {
     return inventory[id];

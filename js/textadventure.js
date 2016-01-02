@@ -104,8 +104,12 @@ var TextAdventure = (function (){
     // break command into spaces
     var cl = c.split(" ");
 
+    var objectString = "";
+    var i=0;
+
     // evaluate command based on first element:
     switch(cl[0]) {
+
       case "help":
         displayHelp();
         break;
@@ -127,7 +131,7 @@ var TextAdventure = (function (){
       case "use":
         // loop through words to see if there is an "on" modifier
         var onPos;
-        for(var i=1; i<cl.length; i++) {
+        for(i=1; i<cl.length; i++) {
           if(cl[i]==="on") {
             onPos = i;
           }
@@ -135,7 +139,6 @@ var TextAdventure = (function (){
         var objectPosEnd = (onPos===undefined) ? cl.length-1 : onPos-1;
 
         // get string for object to use
-        var objectString = "";
         for(i=1; i<=objectPosEnd; i++) {
           objectString += cl[i]+" ";
         }
@@ -156,6 +159,18 @@ var TextAdventure = (function (){
         validateUse(objectString, objectOnString);
         break;
 
+      // pick up
+      case "pick":
+        if(cl[1]==="up") {
+          objectString = "";
+          for(i=2; i<cl.length; i++) {
+            objectString += cl[i] + " ";
+          }
+          objectString = objectString.trim();
+          validatePickup(objectString);
+        }
+        break;
+
       default:
         printLine("That instruction wasn't understood.");
         break;
@@ -168,6 +183,15 @@ var TextAdventure = (function (){
     console.log("Moving to location "+ l);
     player.setLocation(l) ;
     printLine(locations[player.getLocation()].text_on_visit);
+  }
+
+
+  // uses an object
+  function useObject(o) {
+    // todo:
+    // - us an object
+    // - use an object on another object
+    // - remove the item from inventory if need be
   }
 
 
@@ -227,6 +251,21 @@ var TextAdventure = (function (){
   }
 
 
+  // checks if an object can be picked up
+  function validatePickup(o) {
+    console.log("Testing object "+ o +" for picking up.");
+    for(var object in locations[player.getLocation()].objects) {
+      if(object===o) {
+        obj = locations[player.getLocation()].objects[object];
+        if(obj.can_pickup) {
+          player.addItemToInventory(o, obj);
+          printLine("You put the "+ o +" in your inventory");
+        }
+      }
+    }
+  }
+
+
   // shows the help information and command list
   function displayHelp() {
     console.log("Displaying help");
@@ -258,6 +297,7 @@ var TextAdventure = (function (){
   function displayInventory() {
     console.log("Displaying the inventory");
     var inventoryText = "<h2>Inventory</h2>";
+    console.log(player.getInventory());
     inventoryText += buildDefinitionList(player.getInventory());
     printLine(inventoryText);
   }
