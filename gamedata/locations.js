@@ -35,14 +35,23 @@ var locations = {
       "east": "hallway"
     },
     objects: {
+      "bed": {
+        name: "A bed",
+        description: "A bed that seems too empty",
+        can_use: false,
+        text_on_use: "",
+        can_pickup: false,
+        can_use_on_object: false,
+        text_on_use_object_on: ""
+      },
       "teddy bear": {
-        description: "A computer on a desk",
+        description: "A lonely teddy bear",
         can_use: false,
         text_on_use: "",
         can_pickup: true,
         text_on_pickup: "",
         can_use_on_object: "bed",
-        text_on_use_object_on: ""
+        text_on_use_object_on: "you put the teddy bear on the bed, where it seemingly belongs."
       }
     }
   },

@@ -4,7 +4,7 @@ var TextAdventure = (function (){
   // properties and gamedata of the Text Adventure
   var title = "test";
   var locations = {};
-  var activeLocation = "";
+  var player;
 
   // UI elements and properties
   var taHeight = 0;
@@ -24,6 +24,18 @@ var TextAdventure = (function (){
     taHeight = h;
     locations = l;
     prepareContainer();
+
+    // set up the player object:
+    player = Object.create(Player);
+
+    // initial player inventory can go here
+    var inv = {
+      "test": {
+        name: "A test oject",
+        description: "Some object whose only purpose is to test the inventory system"
+      }
+    };
+    player.init(inv);
 
     // load location
     gotoLocation(locations.startlocation);
@@ -154,8 +166,8 @@ var TextAdventure = (function (){
   // loads in a new locations
   function gotoLocation(l) {
     console.log("Moving to location "+ l);
-    activeLocation = l;
-    printLine(locations[activeLocation].text_on_visit);
+    player.setLocation(l) ;
+    printLine(locations[player.getLocation()].text_on_visit);
   }
 
 
@@ -163,14 +175,14 @@ var TextAdventure = (function (){
   function validateMoveDirection(d){
     console.log("Testing direction "+ d +" for validity");
     var valid = false;
-    for(var direction in locations[activeLocation].directions) {
+    for(var direction in locations[player.getLocation()].directions) {
       //valid = true;
       if(direction===d)
         valid = true;
     }
 
     if(valid)
-      gotoLocation(locations[activeLocation].directions[d]);
+      gotoLocation(locations[player.getLocation()].directions[d]);
     else
       printLine("That is not a possible direction.");
   }
@@ -181,18 +193,37 @@ var TextAdventure = (function (){
     console.log("Testing objects for valid use: "+ o +", "+ ou);
     var validObject = false;
     var validObjectUse = false;
+    var obj, objOnUse;
 
-    // todo, check player inventory...
-
-    for(var object in locations[activeLocation].objects) {
-      if(object===o) {
-        objectToUse = locations[activeLocation].objects[object];
-        if(objectToUse.can_use) {
-          printLine(objectToUse.text_on_use);
+    // valid object?
+    // in player inventory?
+    if(player.inInventory(o)) {
+      validObject = true;
+      obj = player.getItemFromInventory(o);
+    } else {
+      // in the current location?
+      for(var object in locations[player.getLocation()].objects) {
+        if(object===o) {
+          validObject = true;
+          obj = locations[player.getLocation()].objects[object];
         }
       }
     }
-    //console.log(locations[activeLocation].objects[o]);
+
+    if(validObject) {
+      // can the object be used ?
+      console.log(obj);
+      if(obj.can_use) {
+        printLine(obj.text_on_use);
+      } else if(obj.can_use_on_object===ou) {
+        printLine(obj.text_on_use_object_on);
+      } else {
+        printLine("Can't use "+ o +" this way.");
+      }
+    } else {
+      printLine("There's no "+ o +" to use.");
+    }
+    //console.log(locations[player.getLocation()].objects[o]);
   }
 
 
@@ -215,7 +246,7 @@ var TextAdventure = (function (){
         description: "Pick up an object and put it in your inventory"
       },
       "use": {
-        description: "Use an object in your inventory (on a specific object)"
+        description: "Use an object in your inventory or location (on a specific object)"
       }
     };
     helpText += buildDefinitionList(commandlist);
@@ -227,6 +258,7 @@ var TextAdventure = (function (){
   function displayInventory() {
     console.log("Displaying the inventory");
     var inventoryText = "<h2>Inventory</h2>";
+    inventoryText += buildDefinitionList(player.getInventory());
     printLine(inventoryText);
   }
 
