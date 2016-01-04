@@ -174,11 +174,6 @@ var TextAdventure = (function (){
   }
 
 
-  // loads in a new locations
-  function gotoLocation(l) {
-  }
-
-
   // pick up an object
   function pickupOpbject(id, obj) {
     // add item to the inventory:
@@ -222,33 +217,57 @@ var TextAdventure = (function (){
     var obj, objOnUse;
 
     // valid object?
-    // in player inventory?
-    if(player.inInventory(o)) {
-      validObject = true;
-      obj = player.getItemFromInventory(o);
+
+    // in player inventory? -> DONE
+    if(isObjectAvailable(o)) {
+      if(player.inInventory(o)) {
+        obj = player.getItemFromInventory(o);
+      } else {
+        obj = locations[player.getLocation()].objects[o];
+      }
+      // second object?
+      if(ou!=="") {
+        // object can be used on second ojbect && second object is available
+        if(obj.can_use_on_object===ou && isObjectAvailable(ou)) {
+          // use object and see if it needs to be removed
+          printLine(obj.text_on_use_object_on);
+          if(obj.remove_after_use) {
+            player.deleteItemFromInventory(o);
+          }
+        } else {
+          printLine("Can't use the "+ o +" that way.", "error");
+        }
+      } else {
+        // can object be used
+        if(obj.can_use) {
+          // use object and see if it needs to be removed
+          printLine(obj.text_on_use);
+          if(obj.remove_after_use) {
+            player.deleteItemFromInventory(id);
+          }
+        } else {
+          printLine("The "+ o +" can't be used.", "error");
+        }
+      }
+
+
     } else {
-      // in the current location?
+      printLine("There's no "+ o + " to use", "error");
+    }
+  }
+
+
+  function isObjectAvailable(o) {
+    if(player.inInventory(o)) {
+      return true;
+    } else {
       for(var object in locations[player.getLocation()].objects) {
         if(object===o) {
-          validObject = true;
-          obj = locations[player.getLocation()].objects[object];
+          return true;
         }
       }
     }
-
-    if(validObject) {
-      // can the object be used ?
-      if(obj.can_use) {
-        printLine(obj.text_on_use);
-      } else if(obj.can_use_on_object===ou) {
-        printLine(obj.text_on_use_object_on);
-      } else {
-        printLine("Can't use "+ o +" this way.", "error");
-      }
-    } else {
-      printLine("There's no "+ o +" to use.", "error");
-    }
-    //if(options.debug===true) console.log(locations[player.getLocation()].objects[o]);
+    return false;
   }
 
 

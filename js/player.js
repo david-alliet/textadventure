@@ -60,6 +60,7 @@ var Player = (function() {
     getInventory: getInventory,
     addItemToInventory: addItemToInventory,
     getItemFromInventory: getItemFromInventory,
+    deleteItemFromInventory: deleteItemFromInventory,
     inInventory: inInventory
   };
 })();
