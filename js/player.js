@@ -1,8 +1,8 @@
-// The player object will hold functionalities and data related specifically to the player
+// The player object holds functionalities and data related specifically to the player
 var Player = (function() {
 
   var currentLocation = "";
-  var atObject = "";
+  var atObject = "";  // currently unused...
   var inventory = {};
 
   function init(si) {
@@ -21,11 +21,11 @@ var Player = (function() {
   }
 
 
+  // *******************
   // inventory functions
   // *******************
 
-  // checks if an item is in the inventory,
-  // get's passed a string, returns false or the object with all its properties
+  // checks if an item is in the inventory
   function inInventory(item) {
     for(var object in inventory) {
       if(object===item) return true;
@@ -43,7 +43,7 @@ var Player = (function() {
     delete inventory[id];
   }
 
-  // returns a specific item from the inventory based on an id
+  // retrieves a specific item from the inventory based on an id
   function getItemFromInventory(id) {
     return inventory[id];
   }

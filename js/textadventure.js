@@ -1,13 +1,13 @@
 // The main textadventure object that will hold most of the functionality to control the game
 var TextAdventure = (function (){
+  // UI elements and properties
 
   // properties and gamedata of the Text Adventure
-  var title = "test";
+  var description = "";
   var locations = {};
-  var player;
+  var options;
 
-  // UI elements and properties
-  var taHeight = 0;
+  // UI elements
   var container = null;
   var outputContainer = null;
   var inputField = null;
@@ -18,33 +18,28 @@ var TextAdventure = (function (){
   var timerInterval = 10;
 
   // init the game, gets passed the <div> container and the desired height of the box
-  function init(cid, h, l) {
-    console.log("Initializing text adventure");
+  function init(cid, o, l, i) {
     container = document.getElementById(cid);
-    taHeight = h;
+    options = o;
     locations = l;
+    if(options.debug===true) console.log("Initializing text adventure");
+
+    // prepare the TA container with the neccesary game elements
     prepareContainer();
 
-    // set up the player object:
+    // set up the player object and initialize with starting inventory
     player = Object.create(Player);
-
-    // initial player inventory can go here
-    var inv = {
-      "test": {
-        name: "A test oject",
-        description: "Some object whose only purpose is to test the inventory system"
-      }
-    };
-    player.init(inv);
+    player.init(i);
 
     // load location
-    gotoLocation(locations.startlocation);
+    player.setLocation(locations.startlocation);
+    printLine(locations[player.getLocation()].text_on_visit);
   }
 
 
   // set up the text adventure container with all the neccesary UI elements
   function prepareContainer() {
-    console.log("Preparing container with game elements");
+    if(options.debug===true) console.log("Preparing container with game elements");
     container.innerHTML = "";
 
     // container for the output of the game
@@ -87,8 +82,8 @@ var TextAdventure = (function (){
     container.appendChild(inputContainer);
 
     // set height of the text adventure container and its elements
-    container.style.height = taHeight+"px";
-    outputContainer.style.height = (taHeight - inputContainer.clientHeight)+"px";
+    container.style.height = options.height+"px";
+    outputContainer.style.height = (options.height - inputContainer.clientHeight)+"px";
 
     // display the help information as initial message
     displayHelp();
@@ -97,7 +92,7 @@ var TextAdventure = (function (){
 
   // parse incoming commands
   function parseCommand(c) {
-    console.log("Received command : "+ c);
+    if(options.debug===true) console.log("Received command : "+ c);
 
     // convert the entire command into lower case
     c = c.toLowerCase();
@@ -120,9 +115,10 @@ var TextAdventure = (function (){
 
       case "go":
         if(cl[1]===undefined) {
-          printLine("Please specify where you want to go.");
+          printLine("Please specify where you want to go.", "error");
         } else  if(cl[1]==="to") {
-          console.log("Moving to object "+ cl[2]);
+          // to do, if needed, move to a named location or object
+          if(options.debug===true) console.log("Moving to object "+ cl[2]);
         } else {
           validateMoveDirection(cl[1]);
         }
@@ -143,7 +139,7 @@ var TextAdventure = (function (){
           objectString += cl[i]+" ";
         }
         objectString = objectString.trim();
-        console.log("Use object: "+ objectString);
+        if(options.debug===true) console.log("Use object: "+ objectString);
 
         // get string for object to use should be acted on
         var objectOnString = "";
@@ -153,7 +149,7 @@ var TextAdventure = (function (){
           }
           objectOnString = objectOnString.trim();
         }
-        console.log("Object to be used on: "+ objectOnString);
+        if(options.debug===true) console.log("Object to be used on: "+ objectOnString);
 
         // check to see if object(s) to be used are valid
         validateUse(objectString, objectOnString);
@@ -172,7 +168,7 @@ var TextAdventure = (function (){
         break;
 
       default:
-        printLine("That instruction wasn't understood.");
+        printLine("That instruction wasn't understood.", error);
         break;
     }
   }
@@ -180,41 +176,47 @@ var TextAdventure = (function (){
 
   // loads in a new locations
   function gotoLocation(l) {
-    console.log("Moving to location "+ l);
-    player.setLocation(l) ;
-    printLine(locations[player.getLocation()].text_on_visit);
   }
 
 
-  // uses an object
-  function useObject(o) {
-    // todo:
-    // - us an object
-    // - use an object on another object
-    // - remove the item from inventory if need be
+  // pick up an object
+  function pickupOpbject(id, obj) {
+    // add item to the inventory:
+    player.addItemToInventory(id, obj);
+
+    // set a flag that it is picked up
+    locations[player.getLocation()].objects[id].picked_up = true;
+    printLine("You put the "+ id +" in your inventory");
   }
 
 
   // validate if a given direction is valid
   function validateMoveDirection(d){
-    console.log("Testing direction "+ d +" for validity");
+    if(options.debug===true) console.log("Testing direction "+ d +" for validity");
     var valid = false;
+    var l = "";
     for(var direction in locations[player.getLocation()].directions) {
       //valid = true;
-      if(direction===d)
+      if(direction===d) {
         valid = true;
+      }
     }
 
-    if(valid)
-      gotoLocation(locations[player.getLocation()].directions[d]);
-    else
-      printLine("That is not a possible direction.");
+    // move:
+    if(valid) {
+      if(options.debug===true) console.log("Moving to location "+ l);
+      player.setLocation(locations[player.getLocation()].directions[d]);
+      printLine(locations[player.getLocation()].text_on_visit);
+    } else {
+      printLine("That is not a possible direction.", "error");
+    }
+
   }
 
 
   // validate if specified objects can be used
   function validateUse(o, ou) {
-    console.log("Testing objects for valid use: "+ o +", "+ ou);
+    if(options.debug===true) console.log("Testing objects for valid use: "+ o +", "+ ou);
     var validObject = false;
     var validObjectUse = false;
     var obj, objOnUse;
@@ -236,30 +238,34 @@ var TextAdventure = (function (){
 
     if(validObject) {
       // can the object be used ?
-      console.log(obj);
       if(obj.can_use) {
         printLine(obj.text_on_use);
       } else if(obj.can_use_on_object===ou) {
         printLine(obj.text_on_use_object_on);
       } else {
-        printLine("Can't use "+ o +" this way.");
+        printLine("Can't use "+ o +" this way.", "error");
       }
     } else {
-      printLine("There's no "+ o +" to use.");
+      printLine("There's no "+ o +" to use.", "error");
     }
-    //console.log(locations[player.getLocation()].objects[o]);
+    //if(options.debug===true) console.log(locations[player.getLocation()].objects[o]);
   }
 
 
   // checks if an object can be picked up
   function validatePickup(o) {
-    console.log("Testing object "+ o +" for picking up.");
+    if(options.debug===true) console.log("Testing object "+ o +" for picking up.");
     for(var object in locations[player.getLocation()].objects) {
       if(object===o) {
         obj = locations[player.getLocation()].objects[object];
         if(obj.can_pickup) {
-          player.addItemToInventory(o, obj);
-          printLine("You put the "+ o +" in your inventory");
+          if(obj.picked_up) {
+            printLine("You have already picked up the "+ o, "error");
+          } else {
+            pickupOpbject(o, obj);
+          }
+        } else {
+          printLine("You can't pick up the "+ o, "error");
         }
       }
     }
@@ -268,8 +274,9 @@ var TextAdventure = (function (){
 
   // shows the help information and command list
   function displayHelp() {
-    console.log("Displaying help");
-    var helpText = "<h2>Welcome to "+title+"</h2>";
+    if(options.debug===true) console.log("Displaying help");
+    var helpText = "<h2>Welcome to "+options.title+"</h2>";
+    helpText += "<p>"+ options.description +"</p>";
     helpText += "<p>Explore all locations, collect items and solve puzzles to beat the game. Here is a list of instructions you can use to get started:</p>";
     var commandlist = {
       "help": {
@@ -289,24 +296,24 @@ var TextAdventure = (function (){
       }
     };
     helpText += buildDefinitionList(commandlist);
-    printLine(helpText);
+    printLine(helpText, "help");
   }
 
 
   // shows all items in the inventory
   function displayInventory() {
-    console.log("Displaying the inventory");
+    if(options.debug===true) console.log("Displaying the inventory");
     var inventoryText = "<h2>Inventory</h2>";
-    console.log(player.getInventory());
     inventoryText += buildDefinitionList(player.getInventory());
-    printLine(inventoryText);
+    printLine(inventoryText, "inventory");
   }
 
 
   // prints a line to the output container
-  function printLine(t) {
+  function printLine(t, c) {
     var item = document.createElement("div");
     item.className = "dal-ta-output-item";
+    if(c!==undefined) item.className += " "+ c;
     item.innerHTML = t;
     outputContainer.appendChild(item);
     // adjust the top padding of the first item so the printed message gets aligned at the bottom:
@@ -314,7 +321,7 @@ var TextAdventure = (function (){
       firstMessageDisplayed = true;
       item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
     }
-    // add some sort of navigation to bring the item into view
+    // scroll the item into view with an animation
     window.clearInterval(timer);
     timer = window.setInterval(animateScroll, timerInterval);
   }
