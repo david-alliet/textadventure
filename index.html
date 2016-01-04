@@ -25,10 +25,18 @@
 <script src="js/player.js" type="text/javascript"></script>
 <script src="js/textadventure.js" type="text/javascript"></script>
 <script src="gamedata/locations.js" type="text/javascript"></script>
+<script src="gamedata/inventory.js" type="text/javascript"></script>
 <script type="text/javascript">
 document.addEventListener("DOMContentLoaded", function(e){
-   var ta = Object.create(TextAdventure);
-   ta.init("textadventure", 400, locations);
+  var taOptions = {
+    title: "The testing grounds",
+    description: "A game for the sole purpose of testing the TA engine.",
+    align: "top",
+    height: 400,
+    debug: true
+  };
+  var ta = Object.create(TextAdventure);
+  ta.init("textadventure", taOptions, locations, inventory);
 });
 </script>
 </body>
