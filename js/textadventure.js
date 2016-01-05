@@ -189,19 +189,32 @@ var TextAdventure = (function (){
   function validateMoveDirection(d){
     if(options.debug===true) console.log("Testing direction "+ d +" for validity");
     var valid = false;
+    var dependencyError = false;
+    var dirObj;
     var l = "";
     for(var direction in locations[player.getLocation()].directions) {
       //valid = true;
       if(direction===d) {
         valid = true;
+        dirObj = locations[player.getLocation()].directions[direction];
+        if(dirObj.depends_on!=="") {
+          if(locations[player.getLocation()].objects[dirObj.depends_on].is_used===undefined) {
+            dependencyError = true;
+          }
+        }
       }
     }
 
     // move:
     if(valid) {
-      if(options.debug===true) console.log("Moving to location "+ l);
-      player.setLocation(locations[player.getLocation()].directions[d]);
-      printLine(locations[player.getLocation()].text_on_visit);
+      if(dependencyError) {
+        if(options.debug===true) console.log("Access to this location was blocked");
+        printLine(locations[player.getLocation()].directions[d].text_on_error, "error");
+      } else {
+        if(options.debug===true) console.log("Moving to location "+ l);
+        player.setLocation(locations[player.getLocation()].directions[d].location);
+        printLine(locations[player.getLocation()].text_on_visit);
+      }
     } else {
       printLine("That is not a possible direction.", "error");
     }
@@ -231,6 +244,7 @@ var TextAdventure = (function (){
         if(obj.can_use_on_object===ou && isObjectAvailable(ou)) {
           // use object and see if it needs to be removed
           printLine(obj.text_on_use_object_on);
+          locations[player.getLocation()].objects[ou].is_used = true;
           if(obj.remove_after_use) {
             player.deleteItemFromInventory(o);
           }
