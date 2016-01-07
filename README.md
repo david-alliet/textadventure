@@ -25,6 +25,7 @@ The game data is structured in JSON objects.
 
 ### Objects
 
+* ``name``: the name users can use to target the object
 * ``description``: the description of this object (shown in inventory)
 * ``can_use``: a boolean flag indicating if this object can be used in any way
 * ``text_on_use``: the text displayed when the object is used

@@ -12,7 +12,8 @@ var locations = {
 
     },
     objects: {
-      "computer": {
+      "office_computer": {
+        name: "computer",
         description: "A computer on a desk",
         can_use: true,
         text_on_use: "It goes beep",
@@ -27,17 +28,18 @@ var locations = {
   "hallway": {
     name: "Hallway",
     description: "A halway with a few doors",
-    text_on_visit: "You find yourself in a long hallway, there is a door to the north",
+    text_on_visit: "You find yourself in a long hallway, the office is to the north.",
     directions: {
       "north": {
         location: "office",
-        depends_on: "hallway door",
-        text_on_error: "The door to the office is locked."
+        depends_on: "hallway_door",
+        text_on_error: "A locked door blocks your way."
       }
     },
     objects: {
-      "hallway door": {
-        description: "The door leading to the office.",
+      "hallway_door": {
+        name: "door",
+        description: "The door leading to the office. It appears closed",
         can_use: false,
         text_on_use: "",
         can_pickup: false,

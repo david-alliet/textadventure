@@ -28,7 +28,7 @@ var Player = (function() {
   // checks if an item is in the inventory
   function inInventory(item) {
     for(var object in inventory) {
-      if(object===item) return true;
+      if(object===item || inventory[object].name===item) return true;
     }
     return false;
   }
@@ -45,7 +45,18 @@ var Player = (function() {
 
   // retrieves a specific item from the inventory based on an id
   function getItemFromInventory(id) {
-    return inventory[id];
+    for(var item in inventory) {
+      if(item===id || inventory[item].name===id)
+        return inventory[item];
+    }
+  }
+
+  // retrieves the id of an item based on its name
+  function getItemIDFromInventory(name) {
+    for(var item in inventory) {
+      if(inventory[item].name===name)
+        return item;
+    }
   }
 
   // returns the full inventory
@@ -60,6 +71,7 @@ var Player = (function() {
     getInventory: getInventory,
     addItemToInventory: addItemToInventory,
     getItemFromInventory: getItemFromInventory,
+    getItemIDFromInventory: getItemIDFromInventory,
     deleteItemFromInventory: deleteItemFromInventory,
     inInventory: inInventory
   };

@@ -167,8 +167,12 @@ var TextAdventure = (function (){
         }
         break;
 
+      case "inspect":
+
+        break;
+
       default:
-        printLine("That instruction wasn't understood.", error);
+        printLine("That instruction wasn't understood.", "error");
         break;
     }
   }
@@ -227,26 +231,43 @@ var TextAdventure = (function (){
     if(options.debug===true) console.log("Testing objects for valid use: "+ o +", "+ ou);
     var validObject = false;
     var validObjectUse = false;
-    var obj, objOnUse;
+    var obj, objId, objOnUse, objOnUseId;
 
-    // valid object?
-
-    // in player inventory? -> DONE
+    // object available
     if(isObjectAvailable(o)) {
+      // in player inventory?
       if(player.inInventory(o)) {
+        objId = player.getItemIDFromInventory(o);
         obj = player.getItemFromInventory(o);
       } else {
-        obj = locations[player.getLocation()].objects[o];
+        for(var object in locations[player.getLocation()].objects) {
+          if(locations[player.getLocation()].objects[object].name === o) {
+            objId = object;
+            obj = locations[player.getLocation()].objects[object];
+          }
+        }
       }
       // second object?
       if(ou!=="") {
-        // object can be used on second ojbect && second object is available
-        if(obj.can_use_on_object===ou && isObjectAvailable(ou)) {
-          // use object and see if it needs to be removed
+
+        // check if the 2nd specified object is valid
+        if(player.inInventory(ou)){
+          objOnUseId = getItemIDFromInventory(ou);
+          objOnUse = player.getItemFromInventory(ou);
+        } else {
+          for(var object2 in locations[player.getLocation()].objects) {
+            if(locations[player.getLocation()].objects[object2].name === ou) {
+              objOnUseId = object2;
+              objOnUse = locations[player.getLocation()].objects[object2];
+            }
+          }
+        }
+
+        if(obj.can_use_on_object == objOnUse.name) {
           printLine(obj.text_on_use_object_on);
-          locations[player.getLocation()].objects[ou].is_used = true;
+          locations[player.getLocation()].objects[objOnUseId].is_used = true;
           if(obj.remove_after_use) {
-            player.deleteItemFromInventory(o);
+            player.deleteItemFromInventory(objId);
           }
         } else {
           printLine("Can't use the "+ o +" that way.", "error");
@@ -257,10 +278,14 @@ var TextAdventure = (function (){
           // use object and see if it needs to be removed
           printLine(obj.text_on_use);
           if(obj.remove_after_use) {
-            player.deleteItemFromInventory(id);
+            player.deleteItemFromInventory(objId);
           }
         } else {
-          printLine("The "+ o +" can't be used.", "error");
+          if(obj.can_use_on_object!==false) {
+            printLine("The "+ o +" can't be used that way.", "error");
+          } else {
+            printLine("The "+ o +" can't be used.", "error");
+          }
         }
       }
 
@@ -270,13 +295,14 @@ var TextAdventure = (function (){
     }
   }
 
-
+  // checks if an object is available in the player inventory or in the current location
+  // returns the object if found
   function isObjectAvailable(o) {
     if(player.inInventory(o)) {
       return true;
     } else {
       for(var object in locations[player.getLocation()].objects) {
-        if(object===o) {
+        if(locations[player.getLocation()].objects[object].name === o) {
           return true;
         }
       }
@@ -326,6 +352,9 @@ var TextAdventure = (function (){
       },
       "use": {
         description: "Use an object in your inventory or location (on a specific object)"
+      },
+      "examine": {
+        description: "Take a closer look at an object in your inventory or in your current location."
       }
     };
     helpText += buildDefinitionList(commandlist);
@@ -389,7 +418,7 @@ var TextAdventure = (function (){
   function buildDefinitionList(list) {
     var convertedList = "<dl>";
     for(var item in list) {
-      convertedList += "<dt>"+item+"</dt>";
+      convertedList += (list[item].name===undefined) ? "<dt>"+item+"</dt>" : "<dt>"+list[item].name+"</dt>";
       convertedList += "<dd>"+ list[item].description +"</dd>";
     }
     convertedList += "</dl>";
