@@ -8,13 +8,15 @@ var TextAdventure = (function (){
   var options;
 
   // UI elements
-  var container = null;
-  var outputContainer = null;
-  var inputField = null;
-  var firstMessageDisplayed = false;
+  var container;
+  var outputContainer;
+  var inputField;
+  var tutorialMessages = [];
+  var tutorialMessageCount = 0;
 
   // some helper variables and objects
-  var timer = null;
+  var firstMessageDisplayed = false;
+  var timer;
   var timerInterval = 10;
 
   // init the game, gets passed the <div> container and the desired height of the box
@@ -23,6 +25,11 @@ var TextAdventure = (function (){
     options = o;
     locations = l;
     if(options.debug===true) console.log("Initializing text adventure");
+
+    // assign the tutorial messages:
+    tutorialMessages = ["To play, type an instruction followed by RETURN.",
+      "Have a look in your inventory to see what you are currently carrying.",
+      "If you are stuck, examine your current location or an object for hints."];
 
     // prepare the TA container with the neccesary game elements
     prepareContainer();
@@ -34,6 +41,7 @@ var TextAdventure = (function (){
     // load location
     player.setLocation(locations.startlocation);
     printLine(locations[player.getLocation()].text_on_visit);
+
   }
 
 
@@ -57,7 +65,7 @@ var TextAdventure = (function (){
     inputField = document.createElement("input");
     inputField.type = "text";
     inputField.name = "dal-ta-inputfield";
-    inputField.placeholder = "To proceed, type an instruction followed by RETURN";
+    inputField.placeholder = tutorialMessages[tutorialMessageCount];
     inputField.autofocus = true;
     inputField.focus();
 
@@ -66,11 +74,6 @@ var TextAdventure = (function (){
       if(e.keyCode===13) {
         // User hit enter, sending the command to the parser
         TextAdventure.parseCommand(this.value);
-
-        // empty placeholder as user has entered a valid string
-        if(this.placeholder!=="") {
-          this.placeholder = "";
-        }
         // empty the input field
         inputField.value="";
       }
@@ -174,6 +177,13 @@ var TextAdventure = (function (){
       default:
         printLine("That instruction wasn't understood.", "error");
         break;
+
+    }
+    // tutorial messages:
+    // increase message count and print out tutorial placeholders based on it
+    tutorialMessageCount++;
+    if(tutorialMessageCount<tutorialMessages.length) {
+      inputField.placeholder = tutorialMessages[tutorialMessageCount];
     }
   }
 
@@ -375,14 +385,18 @@ var TextAdventure = (function (){
   function printLine(t, c) {
     var item = document.createElement("div");
     item.className = "dal-ta-output-item";
-    if(c!==undefined) item.className += " "+ c;
+    if(c!==undefined) {
+      item.className += " "+ c;
+    }
     item.innerHTML = t;
     outputContainer.appendChild(item);
+
     // adjust the top padding of the first item so the printed message gets aligned at the bottom:
     if(!firstMessageDisplayed) {
       firstMessageDisplayed = true;
       item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
     }
+
     // scroll the item into view with an animation
     window.clearInterval(timer);
     timer = window.setInterval(animateScroll, timerInterval);
