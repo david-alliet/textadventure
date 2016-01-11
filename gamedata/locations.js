@@ -21,8 +21,47 @@ var locations = {
         text_on_pickup: "",
         can_use_on_object: false,
         text_on_use_object_on: "",
-        remove_after_use: false
+        remove_after_use: false,
+        depends_on: ""
+      },
+      "office_desk": {
+        name: "desk",
+        description: "A desk with a drawer. There is a computer on it.",
+        can_use: false,
+        text_on_use: "",
+        can_pickup: false,
+        text_on_pickup: "",
+        can_use_on_object: false,
+        text_on_use_object_on: "",
+        remove_after_use: false,
+        depends_on: ""
+      },
+      "office_drawer": {
+        name: "drawer",
+        description: "The drawer of the office desk. Perhaps there is something inside?",
+        can_use: true,
+        text_on_use: "You open the drawer. Inside there is a trinket.",
+        can_pickup: false,
+        text_on_pickup: "",
+        can_use_on_object: false,
+        text_on_use_object_on: "",
+        remove_after_use: false,
+        depends_on: ""
+      },
+      "office_trinket": {
+        name: "trinket",
+        description: "It's a trinket. It's use and value is not apparent",
+        can_use: false,
+        text_on_use: "",
+        can_pickup: true,
+        text_on_pickup: "You picked up the trinket. You never know if it'll come in handy.",
+        can_use_on_object: false,
+        text_on_use_object_on: "",
+        remove_after_use: false,
+        depends_on: "office_drawer",
+        text_on_error: "You can't reach the trinket."
       }
+
     }
   },
   "hallway": {
@@ -46,7 +85,8 @@ var locations = {
         text_on_pickup: "",
         can_use_on_object: false,
         text_on_use_object_on: "",
-        remove_after_use: false
+        remove_after_use: false,
+        depends_on: ""
       }
     }
   },

@@ -170,8 +170,18 @@ var TextAdventure = (function (){
         }
         break;
 
-      case "inspect":
-
+      case "examine":
+        if(cl[1]===undefined) {
+          printLine("Nothing to examine.", "error");
+        } else {
+          // examine what?
+          var examineString = "";
+          for(i=1; i<cl.length; i++) {
+            examineString += cl[i]+" ";
+          }
+          examineString = examineString.trim();
+          validateExamine(examineString);
+        }
         break;
 
       default:
@@ -179,11 +189,14 @@ var TextAdventure = (function (){
         break;
 
     }
+
     // tutorial messages:
     // increase message count and print out tutorial placeholders based on it
     tutorialMessageCount++;
     if(tutorialMessageCount<tutorialMessages.length) {
       inputField.placeholder = tutorialMessages[tutorialMessageCount];
+    } else {
+      inputField.placeholder = "";
     }
   }
 
@@ -195,7 +208,7 @@ var TextAdventure = (function (){
 
     // set a flag that it is picked up
     locations[player.getLocation()].objects[id].picked_up = true;
-    printLine("You put the "+ id +" in your inventory");
+    printLine("You put the "+ obj.name +" in your inventory");
   }
 
 
@@ -287,6 +300,7 @@ var TextAdventure = (function (){
         if(obj.can_use) {
           // use object and see if it needs to be removed
           printLine(obj.text_on_use);
+          locations[player.getLocation()].objects[objId].is_used = true;
           if(obj.remove_after_use) {
             player.deleteItemFromInventory(objId);
           }
@@ -305,6 +319,30 @@ var TextAdventure = (function (){
     }
   }
 
+
+  // validates the examine command and executes it
+  function validateExamine(q) {
+    if(options.debug) console.log("Testing "+ q +" for examine");
+
+    // is it a valid object ?
+    if(isObjectAvailable(q)) {
+      var obj;
+      if(player.inInventory(q)) {
+        obj = player.getItemFromInventory(q);
+      } else {
+        for(var object in locations[player.getLocation()].objects) {
+          if(locations[player.getLocation()].objects[object].name === q) {
+            obj = locations[player.getLocation()].objects[object];
+          }
+        }
+      }
+      printLine(obj.description);
+    } else {
+      printLine("You can't examine "+ q, "error");
+    }
+  }
+
+
   // checks if an object is available in the player inventory or in the current location
   // returns the object if found
   function isObjectAvailable(o) {
@@ -321,17 +359,38 @@ var TextAdventure = (function (){
   }
 
 
+  // checks if there is an object dependency and if it is fulfilled
+  // returns true if dependency is resolved, false if there is a dependency to resolve
+  function resolvedDependency(oId) {
+    // is there a dependency?
+    if(locations[player.getLocation()].objects[oId].depends_on!=="") {
+      // there is!
+      // get the object to check if it has been used
+      var oD = locations[player.getLocation()].objects[locations[player.getLocation()].objects[oId].depends_on];
+      if(oD.is_used) {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return true;
+    }
+  }
+
+
   // checks if an object can be picked up
   function validatePickup(o) {
     if(options.debug===true) console.log("Testing object "+ o +" for picking up.");
     for(var object in locations[player.getLocation()].objects) {
-      if(object===o) {
+      if(locations[player.getLocation()].objects[object].name===o) {
         obj = locations[player.getLocation()].objects[object];
         if(obj.can_pickup) {
           if(obj.picked_up) {
             printLine("You have already picked up the "+ o, "error");
+          } else if(!resolvedDependency(object)) {
+            printLine(obj.text_on_error);
           } else {
-            pickupOpbject(o, obj);
+            pickupOpbject(object, obj);
           }
         } else {
           printLine("You can't pick up the "+ o, "error");
