@@ -3,7 +3,6 @@ var TextAdventure = (function (){
   // UI elements and properties
 
   // properties and gamedata of the Text Adventure
-  var description = "";
   var locations = {};
   var options;
 
@@ -201,42 +200,25 @@ var TextAdventure = (function (){
   }
 
 
-  // pick up an object
-  function pickupOpbject(id, obj) {
-    // add item to the inventory:
-    player.addItemToInventory(id, obj);
-
-    // set a flag that it is picked up
-    locations[player.getLocation()].objects[id].picked_up = true;
-    printLine("You put the "+ obj.name +" in your inventory");
-  }
-
-
   // validate if a given direction is valid
   function validateMoveDirection(d){
     if(options.debug===true) console.log("Testing direction "+ d +" for validity");
     var valid = false;
-    var dependencyError = false;
-    var dirObj;
+    var dirObj, dirId;
     var l = "";
     for(var direction in locations[player.getLocation()].directions) {
       //valid = true;
       if(direction===d) {
         valid = true;
+        dirId = direction;
         dirObj = locations[player.getLocation()].directions[direction];
-        if(dirObj.depends_on!=="") {
-          if(locations[player.getLocation()].objects[dirObj.depends_on].is_used===undefined) {
-            dependencyError = true;
-          }
-        }
       }
     }
-
     // move:
     if(valid) {
-      if(dependencyError) {
+      if(!resolvedDependency(dirId)) {
         if(options.debug===true) console.log("Access to this location was blocked");
-        printLine(locations[player.getLocation()].directions[d].text_on_error, "error");
+        printLine(locations[player.getLocation()].directions[dirId].text_on_error, "error");
       } else {
         if(options.debug===true) console.log("Moving to location "+ l);
         player.setLocation(locations[player.getLocation()].directions[d].location);
@@ -245,7 +227,6 @@ var TextAdventure = (function (){
     } else {
       printLine("That is not a possible direction.", "error");
     }
-
   }
 
 
@@ -255,7 +236,6 @@ var TextAdventure = (function (){
     var validObject = false;
     var validObjectUse = false;
     var obj, objId, objOnUse, objOnUseId;
-
     // object available
     if(isObjectAvailable(o)) {
       // in player inventory?
@@ -272,7 +252,6 @@ var TextAdventure = (function (){
       }
       // second object?
       if(ou!=="") {
-
         // check if the 2nd specified object is valid
         if(player.inInventory(ou)){
           objOnUseId = getItemIDFromInventory(ou);
@@ -285,7 +264,6 @@ var TextAdventure = (function (){
             }
           }
         }
-
         if(obj.can_use_on_object == objOnUse.name) {
           printLine(obj.text_on_use_object_on);
           locations[player.getLocation()].objects[objOnUseId].is_used = true;
@@ -312,8 +290,6 @@ var TextAdventure = (function (){
           }
         }
       }
-
-
     } else {
       printLine("There's no "+ o + " to use", "error");
     }
@@ -343,58 +319,105 @@ var TextAdventure = (function (){
   }
 
 
+  // checks if an object can be picked up
+  function validatePickup(o) {
+    if(options.debug===true) console.log("Testing object "+ o +" for picking up.");
+    // is the object to pick up available?
+    if(!isObjectAvailable(o)) {
+      printLine("There is no "+ o +" to pick up.", "error");
+    } else {
+      for(var object in locations[player.getLocation()].objects) {
+        if(locations[player.getLocation()].objects[object].name===o) {
+          obj = locations[player.getLocation()].objects[object];
+          if(obj.can_pickup) {
+            if(obj.picked_up) {
+              printLine("You have already picked up the "+ o, "error");
+            } else if(!resolvedDependency(o)) {
+              printLine(obj.text_on_error);
+            } else {
+              // add to inventory
+              player.addItemToInventory(object, obj);
+              // indicate the object is picked up
+              locations[player.getLocation()].objects[object].picked_up = true;
+              // output message
+              printLine("You put the "+ obj.name +" in your inventory");
+            }
+          } else {
+            printLine("You can't pick up the "+ o, "error");
+          }
+        }
+      }
+    }
+  }
+
+
   // checks if an object is available in the player inventory or in the current location
   // returns the object if found
   function isObjectAvailable(o) {
+    if(options.debug===true) console.log("Checking "+ o +" for availability.");
     if(player.inInventory(o)) {
+      if(options.debug===true) console.log(o +" is available as an object.");
       return true;
     } else {
       for(var object in locations[player.getLocation()].objects) {
         if(locations[player.getLocation()].objects[object].name === o) {
+          if(options.debug===true) console.log(o +" is available as an object.");
           return true;
         }
       }
     }
+    if(options.debug===true) console.log(o +" is not available as an object.");
     return false;
   }
 
 
-  // checks if there is an object dependency and if it is fulfilled
+  // checks if there is an object dependency on the query and if it is fulfilled
   // returns true if dependency is resolved, false if there is a dependency to resolve
   function resolvedDependency(oId) {
-    // is there a dependency?
-    if(locations[player.getLocation()].objects[oId].depends_on!=="") {
-      // there is!
-      // get the object to check if it has been used
-      var oD = locations[player.getLocation()].objects[locations[player.getLocation()].objects[oId].depends_on];
-      if(oD.is_used) {
-        return true;
+    if(options.debug===true) console.log("Testing "+ oId +" for dependencies.");
+    var obj, objId, objDep;
+
+    // is it a direction or an object:
+    if(isObjectAvailable(oId)){
+      // get the object
+      for(var object in locations[player.getLocation()].objects) {
+        if(locations[player.getLocation()].objects[object].name === oId) {
+          objId = object;
+          obj = locations[player.getLocation()].objects[object];
+        }
+      }
+      // is there a dependency?
+      if(obj.depends_on!=="") {
+        // there is!
+        // get the object to check if it has been used
+        objDep = locations[player.getLocation()].objects[locations[player.getLocation()].objects[objId].depends_on];
+        if(objDep.is_used) {
+          if(options.debug===true) console.log("Has dependency, is resolved.");
+          return true;
+        } else {
+          if(options.debug===true) console.log("Has dependency, is not resolved.");
+          return false;
+        }
       } else {
-        return false;
+        if(options.debug===true) console.log("Hasn't got a dependency.");
+        return true;
       }
     } else {
-      return true;
-    }
-  }
-
-
-  // checks if an object can be picked up
-  function validatePickup(o) {
-    if(options.debug===true) console.log("Testing object "+ o +" for picking up.");
-    for(var object in locations[player.getLocation()].objects) {
-      if(locations[player.getLocation()].objects[object].name===o) {
-        obj = locations[player.getLocation()].objects[object];
-        if(obj.can_pickup) {
-          if(obj.picked_up) {
-            printLine("You have already picked up the "+ o, "error");
-          } else if(!resolvedDependency(object)) {
-            printLine(obj.text_on_error);
-          } else {
-            pickupOpbject(object, obj);
-          }
+      // the query is a direction
+      if(locations[player.getLocation()].directions[oId].depends_on!=="") {
+        // there is a dependency!
+        // get the object to check if it has been used
+        oD = locations[player.getLocation()].objects[locations[player.getLocation()].directions[oId].depends_on];
+        if(oD.is_used) {
+          if(options.debug===true) console.log("Has dependency, is resolved.");
+          return true;
         } else {
-          printLine("You can't pick up the "+ o, "error");
+          if(options.debug===true) console.log("Has dependency, is not resolved.");
+          return false;
         }
+      } else {
+        if(options.debug===true) console.log("Hasn't got a dependency.");
+        return true;
       }
     }
   }
