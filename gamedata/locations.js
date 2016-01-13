@@ -87,6 +87,18 @@ var locations = {
         text_on_use_object_on: "",
         remove_after_use: false,
         depends_on: ""
+      },
+      "hallway_button": {
+        name: "button",
+        description: "A button labeled 'press me before opening the door'.",
+        can_use: true,
+        text_on_use: "You pressed the strange button.",
+        can_pickup: false,
+        text_on_pickup: "",
+        can_use_on_object: false,
+        text_on_use_object_on: "",
+        remove_after_use: false,
+        depends_on: ""
       }
     }
   },

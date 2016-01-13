@@ -34,3 +34,5 @@ The game data is structured in JSON objects.
 * ``can_use_on_object``: set to false if the object can not be used on another object, set to an object unique id if the object must be used on another object
 * ``text_on_use_object_on``: text displayed when the object is used on the other specified object
 * ``remove_after_use``: a boolean flag indicating if the object must be removed from the inventory after use
+* ``depends_on``: either an empty string or the id of an object that must be used before this object can be used
+* ``text_on_error``: text shown when user tries to use this object before the dependency is met

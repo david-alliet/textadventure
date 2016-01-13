@@ -265,10 +265,22 @@ var TextAdventure = (function (){
           }
         }
         if(obj.can_use_on_object == objOnUse.name) {
-          printLine(obj.text_on_use_object_on);
-          locations[player.getLocation()].objects[objOnUseId].is_used = true;
-          if(obj.remove_after_use) {
-            player.deleteItemFromInventory(objId);
+          // check dependencies for both objects
+          if(resolvedDependency(o) && resolvedDependency(ou)) {
+            // dependencies are resolved
+            // object can be used on second object
+            printLine(obj.text_on_use_object_on);
+            locations[player.getLocation()].objects[objOnUseId].is_used = true;
+            if(obj.remove_after_use) {
+              player.deleteItemFromInventory(objId);
+            }
+          } else {
+            // which dependency needs to be resolved?
+            if(!resolvedDependency(o)) {
+              printLine(obj.text_on_error);
+            } else if(!resolvedDependency(objOnUseId)) {
+              printLine(objOnUse.text_on_error);
+            }
           }
         } else {
           printLine("Can't use the "+ o +" that way.", "error");
@@ -276,11 +288,18 @@ var TextAdventure = (function (){
       } else {
         // can object be used
         if(obj.can_use) {
-          // use object and see if it needs to be removed
-          printLine(obj.text_on_use);
-          locations[player.getLocation()].objects[objId].is_used = true;
-          if(obj.remove_after_use) {
-            player.deleteItemFromInventory(objId);
+          // check dependency;
+          if(resolvedDependency(o)) {
+            // dependency resolved, object can be used
+            // use object and see if it needs to be removed
+            printLine(obj.text_on_use);
+            locations[player.getLocation()].objects[objId].is_used = true;
+            if(obj.remove_after_use) {
+              player.deleteItemFromInventory(objId);
+            }
+          } else {
+            // dependency needs to be resolved:
+            printLine(obj.text_on_error);
           }
         } else {
           if(obj.can_use_on_object!==false) {
@@ -379,18 +398,25 @@ var TextAdventure = (function (){
 
     // is it a direction or an object:
     if(isObjectAvailable(oId)){
-      // get the object
-      for(var object in locations[player.getLocation()].objects) {
-        if(locations[player.getLocation()].objects[object].name === oId) {
-          objId = object;
-          obj = locations[player.getLocation()].objects[object];
+      // is the object in the inventory?
+      if(player.inInventory(oId)) {
+        // get the object from the inventory
+        objId = player.getItemIDFromInventory(oId);
+        obj = player.getItemFromInventory(oId);
+      } else {
+        // not in inventory, get the object from the scene
+        for(var object in locations[player.getLocation()].objects) {
+          if(locations[player.getLocation()].objects[object].name === oId) {
+            objId = object;
+            obj = locations[player.getLocation()].objects[object];
+          }
         }
       }
       // is there a dependency?
       if(obj.depends_on!=="") {
         // there is!
         // get the object to check if it has been used
-        objDep = locations[player.getLocation()].objects[locations[player.getLocation()].objects[objId].depends_on];
+        objDep = locations[player.getLocation()].objects[obj.depends_on];
         if(objDep.is_used) {
           if(options.debug===true) console.log("Has dependency, is resolved.");
           return true;
@@ -526,6 +552,11 @@ var TextAdventure = (function (){
   return {
     init: init,
     parseCommand: parseCommand,
+    help: displayHelp,
+    inventory: displayInventory,
+    move: validateMoveDirection,
+    use: validateUse,
+    pickup: validatePickup,
     printLine: printLine,
     getContainer: getContainer,
     getInputField: getInputField

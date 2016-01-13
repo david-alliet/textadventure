@@ -8,6 +8,8 @@ var inventory = {
     text_on_pickup: "",
     can_use_on_object: "door",
     text_on_use_object_on: "The office door is now unlocked.",
-    remove_after_use: false
+    remove_after_use: false,
+    depends_on: "hallway_button",
+    text_on_error: "You gotta press the button man."
   }
 };
