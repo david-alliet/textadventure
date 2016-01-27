@@ -183,6 +183,14 @@ var TextAdventure = (function (){
         }
         break;
 
+      case "look":
+        if(cl[1]==="around") {
+          printLine(locations[player.getLocation()].description);
+        } else {
+          printLine("That instruction wasn't understood.", "error");
+        }
+        break;
+
       default:
         printLine("That instruction wasn't understood.", "error");
         break;
@@ -462,17 +470,20 @@ var TextAdventure = (function (){
       "inventory": {
         description: "Displays the items in your character's inventory"
       },
+      "look around": {
+        description: "Take a look at your current location."
+      },
       "go": {
         description: "Go in a specific direction (or to a specific location or object)"
       },
       "pick up": {
         description: "Pick up an object and put it in your inventory"
       },
-      "use": {
-        description: "Use an object in your inventory or location (on a specific object)"
-      },
       "examine": {
         description: "Take a closer look at an object in your inventory or in your current location."
+      },
+      "use": {
+        description: "Use an object in your inventory or location (on a specific object)"
       }
     };
     helpText += buildDefinitionList(commandlist);
