@@ -507,7 +507,38 @@ var TextAdventure = (function (){
     if(c!==undefined) {
       item.className += " "+ c;
     }
-    item.innerHTML = t;
+
+    // replace markdown style markup with actual markup
+
+    // check if the markup is present,
+    // if it loop through the string to replace markup with actual HTML
+    var startPos = 0;
+    var foundPos = 0;
+    var parsedText = "";
+    var dataName = "";
+    var dataClass = "";
+
+    while(t.indexOf("[", startPos)!==-1) {
+      // look first for [
+      foundPos = t.indexOf("[", startPos);
+      parsedText += t.substring(startPos, foundPos);
+      startPos = foundPos+1;
+      // get position of matching ]
+      foundPos = t.indexOf("]", startPos);
+      dataName = t.substring(startPos, foundPos);
+      startPos = foundPos+2;
+      // get whatever is between () to indicate its class
+      foundPos = t.indexOf(")", startPos);
+      dataClass = t.substring(startPos, foundPos);
+      startPos = foundPos+1;
+
+      // wrap all this in span tags
+      parsedText += "<span class=\""+ dataClass + "\">"+ dataName +"</span>";
+    }
+
+    parsedText += t.substring(startPos, t.length);
+
+    item.innerHTML = parsedText;
     outputContainer.appendChild(item);
 
     // adjust the top padding of the first item so the printed message gets aligned at the bottom:

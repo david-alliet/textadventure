@@ -2,14 +2,13 @@ var locations = {
   "office": {
     name: "David's office",
     description: "An office",
-    text_on_visit: "You enter the office. There is a computer on a desk and a door to the south",
+    text_on_visit: "You enter the office. There is a [computer](object) on a desk and a door to the [south](direction)",
     directions: {
       "south": {
         location: "hallway",
         depends_on: "",
         text_on_error: ""
       }
-
     },
     objects: {
       "office_computer": {
@@ -67,7 +66,7 @@ var locations = {
   "hallway": {
     name: "Hallway",
     description: "A halway with a few doors",
-    text_on_visit: "You find yourself in a long hallway, the office is to the north.",
+    text_on_visit: "You find yourself in a long hallway, the office is to the [north](direction).",
     directions: {
       "north": {
         location: "office",
