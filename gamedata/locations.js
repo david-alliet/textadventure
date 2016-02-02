@@ -2,7 +2,7 @@ var locations = {
   "office": {
     name: "David's office",
     description: "An office",
-    text_on_visit: "You enter the office. There is a [computer](object) on a desk and a door to the [south](direction)",
+    text_on_visit: "You enter the office. There is a [computer](object) on a desk and a door to the [south](direction) and some other text here.",
     directions: {
       "south": {
         location: "hallway",

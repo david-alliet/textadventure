@@ -4,6 +4,7 @@ var TextAdventure = (function (){
 
   // properties and gamedata of the Text Adventure
   var locations = {};
+  var victoryConditions = {};
   var options;
 
   // UI elements
@@ -17,12 +18,14 @@ var TextAdventure = (function (){
   var firstMessageDisplayed = false;
   var timer;
   var timerInterval = 10;
+  var usedOjbects;
 
   // init the game, gets passed the <div> container and the desired height of the box
-  function init(cid, o, l, i) {
+  function init(cid, o, l, vc, i) {
     container = document.getElementById(cid);
     options = o;
     locations = l;
+    victoryConditions = vc;
     if(options.debug===true) console.log("Initializing text adventure");
 
     // assign the tutorial messages:
@@ -40,6 +43,8 @@ var TextAdventure = (function (){
     // load location
     player.setLocation(locations.startlocation);
     printLine(locations[player.getLocation()].text_on_visit);
+
+    usedObjects = new Array(0);
 
   }
 
@@ -205,6 +210,9 @@ var TextAdventure = (function (){
     } else {
       inputField.placeholder = "";
     }
+
+    // victory conditions ?
+    checkForVictory();
   }
 
 
@@ -282,6 +290,8 @@ var TextAdventure = (function (){
             if(obj.remove_after_use) {
               player.deleteItemFromInventory(objId);
             }
+            // keep track of used objects (by id) in an array
+            usedObjects.push(objOnUseId);
           } else {
             // which dependency needs to be resolved?
             if(!resolvedDependency(o)) {
@@ -305,6 +315,8 @@ var TextAdventure = (function (){
             if(obj.remove_after_use) {
               player.deleteItemFromInventory(objId);
             }
+            // keep track of used objects (by id) in an array
+            usedObjects.push(objId);
           } else {
             // dependency needs to be resolved:
             printLine(obj.text_on_error);
@@ -374,6 +386,48 @@ var TextAdventure = (function (){
           }
         }
       }
+    }
+  }
+
+
+  // Check for victory conditions:
+  // takes the list of victory conditons and checks if they are met
+  function checkForVictory() {
+    var objId = "";
+    var foundObj = false;
+    // check for location:
+    if(victoryConditions.conditions.in_location==="" || victoryConditions.conditions.in_location===player.getLocation()) {
+      // check for picked up objects
+      for (var i=0; i<victoryConditions.conditions.have_objects.length; i++) {
+        objId = victoryConditions.conditions.have_objects[i];
+        if(!player.inInventory(objId)) {
+          if(options.debug===true) console.log("Victory conditions not met: have object "+ objId);
+          return false;
+        }
+
+        // check for used objects
+        for(i=0; i<victoryConditions.conditions.used_objects.length; i++) {
+          // loop through used objects list:
+          objId = victoryConditions.conditions.used_objects[i];
+          for(var j=0; j<usedObjects.length; j++) {
+            if(objId===usedObjects[j]) {
+              foundObj = true;
+            }
+          }
+
+          if(!foundObj) {
+            if(options.debug===true) console.log("Victory conditions not met: used object "+ objId);
+            return false;
+          }
+        }
+
+        // all checks have passed without exiting the fucntion: VICTORY!
+        printLine(victoryConditions.victory_text, "victory");
+        inputField.disabled = true;
+      }
+    } else {
+      if(options.debug===true) console.log("Victory conditions not met: in location "+ victoryConditions.conditions.in_location);
+      return false;
     }
   }
 
@@ -519,11 +573,11 @@ var TextAdventure = (function (){
     var dataClass = "";
 
     while(t.indexOf("[", startPos)!==-1) {
-      // look first for [
+      // look first occurrence of [ and get all text before it
       foundPos = t.indexOf("[", startPos);
       parsedText += t.substring(startPos, foundPos);
       startPos = foundPos+1;
-      // get position of matching ]
+      // get position of matching ] and all text between the brackets
       foundPos = t.indexOf("]", startPos);
       dataName = t.substring(startPos, foundPos);
       startPos = foundPos+2;
@@ -531,7 +585,6 @@ var TextAdventure = (function (){
       foundPos = t.indexOf(")", startPos);
       dataClass = t.substring(startPos, foundPos);
       startPos = foundPos+1;
-
       // wrap all this in span tags
       parsedText += "<span class=\""+ dataClass + "\">"+ dataName +"</span>";
     }

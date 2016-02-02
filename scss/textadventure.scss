@@ -66,6 +66,16 @@
         }
       }
 
+      .object {
+        color: $highlight;
+        font-weight: bold;
+      }
+
+      .direction {
+        color: $highlight;
+        font-style: italic;
+      }
+
       &:after,
       &:before {
         content: ' ';
