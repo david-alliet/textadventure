@@ -6,7 +6,7 @@ var inventory = {
     text_on_use: "",
     can_pickup: true,
     text_on_pickup: "",
-    can_use_on_object: "door",
+    can_use_on_object: "hallway_door",
     text_on_use_object_on: "The office door is now unlocked.",
     remove_after_use: false,
     depends_on: "hallway_button",

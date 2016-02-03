@@ -280,7 +280,7 @@ var TextAdventure = (function (){
             }
           }
         }
-        if(obj.can_use_on_object == objOnUse.name) {
+        if(objOnUseId!==undefined && obj.can_use_on_object === objOnUseId) {
           // check dependencies for both objects
           if(resolvedDependency(o) && resolvedDependency(ou)) {
             // dependencies are resolved
