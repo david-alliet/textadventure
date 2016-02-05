@@ -64,11 +64,17 @@ var Player = (function() {
     return inventory;
   }
 
+  // set the full inventory (handy for saving functionality)
+  function setInventory(inv) {
+    inventory = inv;
+  }
+
   return {
     init: init,
     getLocation: getLocation,
     setLocation: setLocation,
     getInventory: getInventory,
+    setInventory: setInventory,
     addItemToInventory: addItemToInventory,
     getItemFromInventory: getItemFromInventory,
     getItemIDFromInventory: getItemIDFromInventory,

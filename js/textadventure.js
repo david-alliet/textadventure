@@ -6,6 +6,8 @@ var TextAdventure = (function (){
   var locations = {};
   var victoryConditions = {};
   var options;
+  var player;
+  var customCode;
 
   // UI elements
   var container;
@@ -43,6 +45,12 @@ var TextAdventure = (function (){
     // load location
     player.setLocation(locations.startlocation);
     printLine(locations[player.getLocation()].text_on_visit);
+
+    // initialize a new custom code object, if it is available?
+    if(CustomCode!==undefined) {
+      if(options.debug===true) console.log("Declaring custom code object");
+      customCode = Object.create(CustomCode);
+    }
 
     usedObjects = new Array(0);
 
@@ -317,6 +325,11 @@ var TextAdventure = (function (){
             }
             // keep track of used objects (by id) in an array
             usedObjects.push(objId);
+            // should custom code be executed?
+            if(obj.function_on_use!==undefined) {
+              // execute the function:
+              customCode[obj.function_on_use](obj.function_on_us_parameters);
+            }
           } else {
             // dependency needs to be resolved:
             printLine(obj.text_on_error);
