@@ -7,7 +7,7 @@ var TextAdventure = (function (){
   var victoryConditions = {};
   var options;
   var player;
-  var customCode;
+  var extensions;
 
   // UI elements
   var container;
@@ -21,6 +21,8 @@ var TextAdventure = (function (){
   var timer;
   var timerInterval = 10;
   var usedOjbects;
+  var typedCommands = [];
+  var typedCommandsIndex = 0;
 
   // init the game, gets passed the <div> container and the desired height of the box
   function init(cid, o, l, vc, i) {
@@ -45,12 +47,6 @@ var TextAdventure = (function (){
     // load location
     player.setLocation(locations.startlocation);
     printLine(locations[player.getLocation()].text_on_visit);
-
-    // initialize a new custom code object, if it is available?
-    if(CustomCode!==undefined) {
-      if(options.debug===true) console.log("Declaring custom code object");
-      customCode = Object.create(CustomCode);
-    }
 
     usedObjects = new Array(0);
 
@@ -88,6 +84,20 @@ var TextAdventure = (function (){
         TextAdventure.parseCommand(this.value);
         // empty the input field
         inputField.value="";
+      }
+    }, true);
+
+    inputField.addEventListener("keydown", function(e){
+      // up arrow = 38
+      // down arrow = 40
+      if(e.keyCode===38) {
+        // user hit up arrow key: show previously typed commands:
+        TextAdventure.showTypedCommand(-1);
+      }
+
+      if(e.keyCode===40) {
+        // user hit down arrow: show next command in queue
+        TextAdventure.showTypedCommand(1);
       }
     }, true);
 
@@ -219,8 +229,15 @@ var TextAdventure = (function (){
       inputField.placeholder = "";
     }
 
-    // victory conditions ?
+    // inputted command list
+    // add typed in command to list of commands:
+    typedCommands.push(c);
+    typedCommandsIndex = typedCommands.length;
+    console.log("typed commands:");
+    console.log(typedCommands);
+
     checkForVictory();
+    // victory conditions ?
   }
 
 
@@ -300,6 +317,11 @@ var TextAdventure = (function (){
             }
             // keep track of used objects (by id) in an array
             usedObjects.push(objOnUseId);
+            // should custom code be executed?
+            if(obj.function_on_use!==undefined) {
+              // execute the function:
+              extensions[obj.function_on_use](obj.function_on_us_parameters);
+            }
           } else {
             // which dependency needs to be resolved?
             if(!resolvedDependency(o)) {
@@ -328,7 +350,7 @@ var TextAdventure = (function (){
             // should custom code be executed?
             if(obj.function_on_use!==undefined) {
               // execute the function:
-              customCode[obj.function_on_use](obj.function_on_us_parameters);
+              extensions[obj.function_on_use](obj.function_on_us_parameters);
             }
           } else {
             // dependency needs to be resolved:
@@ -644,6 +666,16 @@ var TextAdventure = (function (){
   }
 
 
+  // load typed command from list by a certain index (somehow?)
+  function showTypedCommand(c) {
+    typedCommandsIndex += c;
+    if(typedCommandsIndex<0) typedCommandsIndex = typedCommands.length-1;
+    if(typedCommandsIndex>=typedCommands.length) typedCommandsIndex=0;
+    console.log("showing typed command, index: "+ typedCommandsIndex);
+    inputField.value = typedCommands[typedCommandsIndex];
+  }
+
+
   // wraps information in a definition list which can then be outputted
   function buildDefinitionList(list) {
     var convertedList = "<dl>";
@@ -656,10 +688,16 @@ var TextAdventure = (function (){
   }
 
 
+  function addExtension(e) {
+    extensions = e;
+  }
+
+
   // expose the public functions in the return object
   return {
     init: init,
     parseCommand: parseCommand,
+    showTypedCommand: showTypedCommand,
     help: displayHelp,
     inventory: displayInventory,
     move: validateMoveDirection,
@@ -667,7 +705,8 @@ var TextAdventure = (function (){
     pickup: validatePickup,
     printLine: printLine,
     getContainer: getContainer,
-    getInputField: getInputField
+    getInputField: getInputField,
+    extend: addExtension
   };
 
 })();
