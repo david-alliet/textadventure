@@ -38,7 +38,10 @@ document.addEventListener("DOMContentLoaded", function(e){
     debug: true
   };
   var ta = Object.create(TextAdventure);
+  var tae = Object.create(TAExtension);
+
   ta.init("textadventure", taOptions, locations, victory_conditions, inventory);
+  ta.extend(tae);
 });
 </script>
 </body>
