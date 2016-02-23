@@ -48,10 +48,10 @@ var TextAdventure = (function (){
       // (needed because localStorage.setItem only supports strings)
       Storage.prototype.setObject = function(key, value) {
         this.setItem(key, JSON.stringify(value));
-      }
+      };
       Storage.prototype.getObject = function(key) {
         return JSON.parse(this.getItem(key));
-      }
+      };
 
   	}
   	catch(e) {
@@ -66,7 +66,7 @@ var TextAdventure = (function (){
     tutorialMessages = ["To play, type an instruction followed by RETURN.",
       "Have a look in your inventory to see what you are currently carrying.",
       "If you are stuck, examine your current location or an object for hints.",
-      "Use the up and down arrow keys to quickly re enter previously typed instructions."];
+      "Use the UP and DOWN arrow keys to view previously typed instructions."];
 
     // prepare the TA container with the neccesary game elements
     prepareContainer();
@@ -83,6 +83,16 @@ var TextAdventure = (function (){
       player.init(storage.getObject("TA_INVENTORY"));
       // set current location based on save:
       player.setLocation(storage.getItem("TA_CURRENTLOCATION"));
+
+      // fill up the used objects array with all objects in the game that are flagged as used:
+      for(var location in locations) {
+        for(var obj in locations[location].objects) {
+          if(locations[location].objects[obj].is_used) {
+            usedObjects.push(obj);
+          }
+        }
+      }
+
     } else {
       if(options.debug) console.log("No local save available, setting up new game");
       // no save available, loading locations from parameters
@@ -96,7 +106,6 @@ var TextAdventure = (function (){
 
     // print the current location text:
     printLine(locations[player.getLocation()].text_on_visit);
-
     // when a save has been loaded, it's good to check for victory on init.
     checkForVictory();
   }
@@ -371,7 +380,7 @@ var TextAdventure = (function (){
             // dependencies are resolved
             // object can be used on second object
             printLine(obj.text_on_use_object_on);
-            locations[player.getLocation()].objects[objOnUseId]["is_used"] = true;
+            locations[player.getLocation()].objects[objOnUseId].is_used = true;
             if(obj.remove_after_use) {
               player.deleteItemFromInventory(objId);
             }
@@ -404,7 +413,7 @@ var TextAdventure = (function (){
             // dependency resolved, object can be used
             // use object and see if it needs to be removed
             printLine(obj.text_on_use);
-            locations[player.getLocation()].objects[objId]["is_used"] = true;
+            locations[player.getLocation()].objects[objId].is_used = true;
             if(obj.remove_after_use) {
               player.deleteItemFromInventory(objId);
             }
@@ -539,7 +548,7 @@ var TextAdventure = (function (){
 
 
   // checks if an object is available in the player inventory or in the current location
-  // returns the object if found
+  // returns true or false
   function isObjectAvailable(o) {
     if(options.debug===true) console.log("Checking "+ o +" for availability.");
     if(player.inInventory(o)) {
@@ -585,7 +594,7 @@ var TextAdventure = (function (){
         // there is!
         // get the object to check if it has been used
         objDep = locations[player.getLocation()].objects[obj.depends_on];
-        if(objDep["is_used"]) {
+        if(objDep.is_used) {
           if(options.debug===true) console.log("Has dependency, is resolved.");
           return true;
         } else {
@@ -602,7 +611,7 @@ var TextAdventure = (function (){
         // there is a dependency!
         // get the object to check if it has been used
         oD = locations[player.getLocation()].objects[locations[player.getLocation()].directions[oId].depends_on];
-        if(oD["is_used"]) {
+        if(oD.is_used) {
           if(options.debug===true) console.log("Has dependency, is resolved.");
           return true;
         } else {
