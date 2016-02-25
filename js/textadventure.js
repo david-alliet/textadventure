@@ -30,7 +30,14 @@ var TextAdventure = (function (){
   // init the game, gets passed the <div> container and the desired height of the box
   function init(cid, o, l, vc, i) {
 
+    // load in options and do some checking for validity
     options = o;
+    console.log(options.height);
+    if(options.height!==undefined && typeof options.height !== "number") {
+      // set height to undefined if it isn't a number:
+      options.height = undefined;
+    }
+    console.log(options.height);
     if(options.debug===true) console.log("Initializing text adventure");
 
     container = document.getElementById(cid);
@@ -57,8 +64,6 @@ var TextAdventure = (function (){
   	catch(e) {
   		canStore = false;
   	}
-
-
 
     victoryConditions = vc;
 
@@ -164,9 +169,12 @@ var TextAdventure = (function (){
     // append container for input to dom
     container.appendChild(inputContainer);
 
-    // set height of the text adventure container and its elements
-    container.style.height = options.height+"px";
-    outputContainer.style.height = (options.height - inputContainer.clientHeight)+"px";
+    // check if a height was passed as option
+    if(options.height!==undefined) {
+      // set height of the text adventure container and its elements
+      container.style.height = options.height+"px";
+      outputContainer.style.height = (options.height - inputContainer.clientHeight)+"px";
+    }
 
     // display the help information as initial message
     displayHelp();
@@ -723,12 +731,17 @@ var TextAdventure = (function (){
     // adjust the top padding of the first item so the printed message gets aligned at the bottom:
     if(!firstMessageDisplayed) {
       firstMessageDisplayed = true;
-      item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
+      // only set a padding if there is a height set in options
+      if(options.height!==undefined) {
+        item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
+      }
     }
 
-    // scroll the item into view with an animation
-    window.clearInterval(timer);
-    timer = window.setInterval(animateScroll, timerInterval);
+    // scroll the item into view with an animation when there is an absolute height set in options
+    if(options.height!==undefined) {
+      window.clearInterval(timer);
+      timer = window.setInterval(animateScroll, timerInterval);
+    }
   }
 
 
