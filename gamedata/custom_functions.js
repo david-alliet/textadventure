@@ -7,10 +7,6 @@ var TAExtension = (function () {
     console.log("Hello " + n +"!");
   }
 
-  function hello2() {
-    console.log("Hello! "+ t);
-  }
-
   // expose the functions you want the text adventure to use in the return object
   return {
     hello: hello

@@ -92,8 +92,10 @@ var locations = {
         description: "A button labeled 'greetings'.",
         can_use: true,
         text_on_use: "You pressed the strange button.",
-        function_on_use: "hello",
-        function_on_us_parameters: "david",
+        use_trigger: {
+          function_call: "hello",
+          function_parameters: "david"
+        },
         can_pickup: false,
         text_on_pickup: "",
         can_use_on_object: false,

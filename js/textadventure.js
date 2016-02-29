@@ -32,12 +32,10 @@ var TextAdventure = (function (){
 
     // load in options and do some checking for validity
     options = o;
-    console.log(options.height);
     if(options.height!==undefined && typeof options.height !== "number") {
       // set height to undefined if it isn't a number:
       options.height = undefined;
     }
-    console.log(options.height);
     if(options.debug===true) console.log("Initializing text adventure");
 
     container = document.getElementById(cid);
@@ -339,6 +337,7 @@ var TextAdventure = (function (){
         if(options.debug===true) console.log("Moving to location "+ l);
         player.setLocation(locations[player.getLocation()].directions[d].location);
         printLine(locations[player.getLocation()].text_on_visit);
+        trigger("visit_trigger", location[player.getLocation()]);
         return true;
       }
     } else {
@@ -395,10 +394,7 @@ var TextAdventure = (function (){
             // keep track of used objects (by id) in an array
             usedObjects.push(objOnUseId);
             // should custom code be executed?
-            if(obj.function_on_use!==undefined) {
-              // execute the function:
-              extensions[obj.function_on_use](obj.function_on_us_parameters);
-            }
+            trigger(obj, "use_trigger");
             return true;
           } else {
             // which dependency needs to be resolved?
@@ -428,10 +424,7 @@ var TextAdventure = (function (){
             // keep track of used objects (by id) in an array
             usedObjects.push(objId);
             // should custom code be executed?
-            if(obj.function_on_use!==undefined) {
-              // execute the function:
-              extensions[obj.function_on_use](obj.function_on_us_parameters);
-            }
+            trigger(obj, "use_trigger");
             return true;
           } else {
             // dependency needs to be resolved:
@@ -471,6 +464,7 @@ var TextAdventure = (function (){
         }
       }
       printLine(obj.description);
+      trigger("examine_trigger", obj);
     } else {
       printLine("You can't examine "+ q, "error");
     }
@@ -501,6 +495,7 @@ var TextAdventure = (function (){
               locations[player.getLocation()].objects[object].picked_up = true;
               // output message
               printLine("You put the "+ obj.name +" in your inventory");
+              trigger("pickup_trigger", obj);
               return true;
             }
           } else {
@@ -566,11 +561,23 @@ var TextAdventure = (function (){
       for(var object in locations[player.getLocation()].objects) {
         if(locations[player.getLocation()].objects[object].name === o) {
           if(options.debug===true) console.log(o +" is available as an object.");
-          return true;
+          return [object, locations[player.getLocation()].objects[object]];
         }
       }
     }
     if(options.debug===true) console.log(o +" is not available as an object.");
+    return false;
+  }
+
+
+  // NOTE: Can we do this in isObjectAvailable function?
+  // find an object in the locations object, returns the id of object if found, returns false if not found
+  function findObjectInLocation(o) {
+    for(var object in locations[player.getLocation()].objects) {
+      if(locations[l].objects[object].name===o) {
+        return object;
+      }
+    }
     return false;
   }
 
@@ -640,6 +647,15 @@ var TextAdventure = (function (){
       storage.setObject("TA_LOCATIONS", locations);
       storage.setObject("TA_INVENTORY", player.getInventory());
       storage.setItem("TA_CURRENTLOCATION", player.getLocation());
+    }
+  }
+
+
+  // trigger function checks if a trigger is available in game data and executes the trigger if it is found:
+  function trigger(obj, trig) {
+    if(obj[trig]!==undefined) {
+      if(options.debug===true) console.log("Trigger "+ trig +" found");
+      extensions[obj[trig].function_call](obj[trig].function_parameters);
     }
   }
 
@@ -772,11 +788,13 @@ var TextAdventure = (function (){
 
   // load typed command from list, c is either 1 for next command and -1 for previous
   function showTypedCommand(c) {
-    typedCommandsIndex += c;
-    if(typedCommandsIndex<0) typedCommandsIndex = typedCommands.length-1;
-    if(typedCommandsIndex>=typedCommands.length) typedCommandsIndex=0;
-    if(options.debug) console.log("showing typed command, index: "+ typedCommandsIndex);
-    inputField.value = typedCommands[typedCommandsIndex];
+    if(typedCommands.length!==0) {
+      typedCommandsIndex += c;
+      if(typedCommandsIndex<0) typedCommandsIndex = typedCommands.length-1;
+      if(typedCommandsIndex>=typedCommands.length) typedCommandsIndex=0;
+      if(options.debug) console.log("showing typed command, index: "+ typedCommandsIndex);
+      inputField.value = typedCommands[typedCommandsIndex];
+    }
   }
 
 
