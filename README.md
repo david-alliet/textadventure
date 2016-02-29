@@ -1,6 +1,16 @@
 # Text-adventure engine
 
-(note: this readme is not yet complete)
+1. What is it
+1. Game features
+  * General structure
+  * Save / resume
+  * Extend with custom functionality
+1. Installing and running the engine
+  * Initialization
+  * Extending the game
+1. Game data structure
+  * Locations
+  * Objects
 
 ## What is it?
 
@@ -35,22 +45,48 @@ MyGame.init("ContainerId", options, locations, victory_conditions, inventory);
 ```
 
 * ```ContainerId``` a string containing the id of the div you want the game to render in;
-* ```options``` a JSON object with options telling the game engine how to render;
+* ```options``` a JSON object with options telling the game engine how to render. Here are the possible options:
+  * ```title``` Required. A string with the name of your game.
+  * ```description``` Required. A string containing the description of your game. This description is shown when the game first starts.
+  * ```height``` Optional. An integer indicating the maximum height in pixels you want the game container to have.
+  * ```debug``` Optional. A boolean flag indicating if the game should print out debugging information in the browser's console.
 * ```locations``` a JSON object containing all the locations of the game. See "Game data structure" for more information about how to structure the data;
+* ```inventory``` a JSON object containing the starting inventory of the player, objects in the starting inventory have the same JSON structure as objects in locations.
 * ```victory_conditions``` a JSON object telling the game what goals the player needs to achieve to win the game;
-* ```inventory``` a JSON object containing the starting inventory of the player.
 
 
 ### Extending the game
 
-You can write your own javascript object to add extra functionality to the game. Make sure your object has publicly exposed functions, which you can then reference in your game data files. Then pass your object to the game using the following code:
+You can write your own javascript object to add extra functionality to the game. Make sure your object has publicly exposed functions, which you can then reference in your game data files.
+
+Typically you would use this to have objects in your game control elements on the page outside of the game. Another good use case for the extend feature is adding analytics to your game to track how users interact with your game.
+
+#### The code
 
 ```
 var MyExtensions = Object.create(MyExtendObject);
 MyGame.extend(MyExtensions);
 ```  
 
-Typically you would use this to have objects in your game control elements on the page outside of the game.
+#### Triggers
+
+A trigger is attached to an object or location and has the following structure:
+
+```
+trigger: {
+  function_call: "functionName",
+  function_parameters: "params"
+}
+```
+
+The name defined in ```function_call``` is the name of a publicly available function in your extend object. The value of ```function_parameters``` is passed to the function. This value can be anything basic javascript data type: numbers, strings, arrays and even JSON objects.
+
+Each trigger is executed on different moments. These are the supported triggers and when they are executed:
+
+* ```use_trigger```: when an object is used
+* ```pickup_trigger```: when an object is picked up
+* ```examine_trigger```: when an object is examined
+* ```visit_trigger```: when a location is visited
 
 ## Game data structure
 
