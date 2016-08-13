@@ -36,18 +36,18 @@ var TextAdventure = (function (){
       // set height to undefined if it isn't a number:
       options.height = undefined;
     }
-    if(options.debug===true) console.log("Initializing text adventure");
+    debug("Initializing text adventure");
 
     container = document.getElementById(cid);
 
     // detect local storage capabilities
     try {
-  		storage = window.localStorage;
+      storage = window.localStorage;
       var x = '__storage_test__';
-  		storage.setItem(x, x);
-  		storage.removeItem(x);
-  		canStore = true;
-      if(options.debug) console.log("Browser is localStorage capable");
+      storage.setItem(x, x);
+      storage.removeItem(x);
+      canStore = true;
+      debug("Browser is localStorage capable");
 
       // extending storage with functions to set and get JSON objects
       // (needed because localStorage.setItem only supports strings)
@@ -57,11 +57,9 @@ var TextAdventure = (function (){
       Storage.prototype.getObject = function(key) {
         return JSON.parse(this.getItem(key));
       };
-
-  	}
-  	catch(e) {
-  		canStore = false;
-  	}
+    } catch(e) {
+      canStore = false;
+    }
 
     victoryConditions = vc;
 
@@ -97,7 +95,8 @@ var TextAdventure = (function (){
       }
 
     } else {
-      if(options.debug) console.log("No local save available, setting up new game");
+      debug("No local save available, setting up new game");
+
       // no save available, loading locations from parameters
       locations = l;
 
@@ -116,7 +115,7 @@ var TextAdventure = (function (){
 
   // set up the text adventure container with all the neccesary UI elements
   function prepareContainer() {
-    if(options.debug===true) console.log("Preparing container with game elements");
+    debug("Preparing container with game elements");
     container.innerHTML = "";
 
     // container for the output of the game
@@ -182,7 +181,7 @@ var TextAdventure = (function (){
   // parse incoming commands
   function parseCommand(c) {
     var actionTaken = false;
-    if(options.debug===true) console.log("Received command : "+ c);
+    debug("Received command : "+ c);
 
     // convert the entire command into lower case
     c = c.toLowerCase();
@@ -208,7 +207,7 @@ var TextAdventure = (function (){
           printLine("Please specify where you want to go.", "error");
         } else  if(cl[1]==="to") {
           // to do, if needed, move to a named location or object
-          if(options.debug===true) console.log("Moving to object "+ cl[2]);
+          debug("Moving to object "+ cl[2]);
         } else {
           actionTaken = validateMoveDirection(cl[1]);
         }
@@ -229,7 +228,7 @@ var TextAdventure = (function (){
           objectString += cl[i]+" ";
         }
         objectString = objectString.trim();
-        if(options.debug===true) console.log("Use object: "+ objectString);
+        debug("Use object: "+ objectString);
 
         // get string for object to use should be acted on
         var objectOnString = "";
@@ -239,7 +238,7 @@ var TextAdventure = (function (){
           }
           objectOnString = objectOnString.trim();
         }
-        if(options.debug===true) console.log("Object to be used on: "+ objectOnString);
+        debug("Object to be used on: "+ objectOnString);
 
         // check to see if object(s) to be used are valid
         actionTaken = validateUse(objectString, objectOnString);
@@ -315,7 +314,7 @@ var TextAdventure = (function (){
 
   // validate if a given direction is valid
   function validateMoveDirection(d){
-    if(options.debug===true) console.log("Testing direction "+ d +" for validity");
+    debug("Testing direction "+ d +" for validity");
     var valid = false;
     var dirObj, dirId;
     var l = "";
@@ -330,11 +329,11 @@ var TextAdventure = (function (){
     // move:
     if(valid) {
       if(!resolvedDependency(dirId)) {
-        if(options.debug===true) console.log("Access to this location was blocked");
+        debug("Access to this location was blocked");
         printLine(locations[player.getLocation()].directions[dirId].text_on_error, "error");
         return false;
       } else {
-        if(options.debug===true) console.log("Moving to location "+ l);
+        debug("Moving to location "+ l);
         player.setLocation(locations[player.getLocation()].directions[d].location);
         printLine(locations[player.getLocation()].text_on_visit);
         trigger("visit_trigger", location[player.getLocation()]);
@@ -349,7 +348,7 @@ var TextAdventure = (function (){
 
   // validate if specified objects can be used
   function validateUse(o, ou) {
-    if(options.debug===true) console.log("Testing objects for valid use: "+ o +", "+ ou);
+    debug("Testing objects for valid use: "+ o +", "+ ou);
     var validObject = false;
     var validObjectUse = false;
     var obj, objId, objOnUse, objOnUseId;
@@ -473,7 +472,7 @@ var TextAdventure = (function (){
 
   // checks if an object can be picked up
   function validatePickup(o) {
-    if(options.debug===true) console.log("Testing object "+ o +" for picking up.");
+    debug("Testing object "+ o +" for picking up.");
     // is the object to pick up available?
     if(!isObjectAvailable(o)) {
       printLine("There is no "+ o +" to pick up.", "error");
@@ -519,7 +518,7 @@ var TextAdventure = (function (){
       for (var i=0; i<victoryConditions.conditions.have_objects.length; i++) {
         objId = victoryConditions.conditions.have_objects[i];
         if(!player.inInventory(objId)) {
-          if(options.debug===true) console.log("Victory conditions not met: have object "+ objId);
+          debug("Victory conditions not met: have object "+ objId);
           return false;
         }
 
@@ -534,7 +533,7 @@ var TextAdventure = (function (){
           }
 
           if(!foundObj) {
-            if(options.debug===true) console.log("Victory conditions not met: used object "+ objId);
+            debug("Victory conditions not met: used object "+ objId);
             return false;
           }
         }
@@ -544,7 +543,7 @@ var TextAdventure = (function (){
         inputField.disabled = true;
       }
     } else {
-      if(options.debug===true) console.log("Victory conditions not met: in location "+ victoryConditions.conditions.in_location);
+      debug("Victory conditions not met: in location "+ victoryConditions.conditions.in_location);
       return false;
     }
   }
@@ -553,19 +552,19 @@ var TextAdventure = (function (){
   // checks if an object is available in the player inventory or in the current location
   // returns true or false
   function isObjectAvailable(o) {
-    if(options.debug===true) console.log("Checking "+ o +" for availability.");
+    debug("Checking "+ o +" for availability.");
     if(player.inInventory(o)) {
-      if(options.debug===true) console.log(o +" is available as an object.");
+      debug(o +" is available as an object.");
       return true;
     } else {
       for(var object in locations[player.getLocation()].objects) {
         if(locations[player.getLocation()].objects[object].name === o) {
-          if(options.debug===true) console.log(o +" is available as an object.");
+          debug(o +" is available as an object.");
           return [object, locations[player.getLocation()].objects[object]];
         }
       }
     }
-    if(options.debug===true) console.log(o +" is not available as an object.");
+    debug(o +" is not available as an object.");
     return false;
   }
 
@@ -585,7 +584,7 @@ var TextAdventure = (function (){
   // checks if there is an object dependency on the query and if it is fulfilled
   // returns true if dependency is resolved, false if there is a dependency to resolve
   function resolvedDependency(oId) {
-    if(options.debug===true) console.log("Testing "+ oId +" for dependencies.");
+    debug("Testing "+ oId +" for dependencies.");
     var obj, objId, objDep;
 
     // is it a direction or an object:
@@ -610,14 +609,14 @@ var TextAdventure = (function (){
         // get the object to check if it has been used
         objDep = locations[player.getLocation()].objects[obj.depends_on];
         if(objDep.is_used) {
-          if(options.debug===true) console.log("Has dependency, is resolved.");
+          debug("Has dependency, is resolved.");
           return true;
         } else {
-          if(options.debug===true) console.log("Has dependency, is not resolved.");
+          debug("Has dependency, is not resolved.");
           return false;
         }
       } else {
-        if(options.debug===true) console.log("Hasn't got a dependency.");
+        debug("Hasn't got a dependency.");
         return true;
       }
     } else {
@@ -627,14 +626,14 @@ var TextAdventure = (function (){
         // get the object to check if it has been used
         oD = locations[player.getLocation()].objects[locations[player.getLocation()].directions[oId].depends_on];
         if(oD.is_used) {
-          if(options.debug===true) console.log("Has dependency, is resolved.");
+          debug("Has dependency, is resolved.");
           return true;
         } else {
-          if(options.debug===true) console.log("Has dependency, is not resolved.");
+          debug("Has dependency, is not resolved.");
           return false;
         }
       } else {
-        if(options.debug===true) console.log("Hasn't got a dependency.");
+        debug("Hasn't got a dependency.");
         return true;
       }
     }
@@ -654,7 +653,7 @@ var TextAdventure = (function (){
   // trigger function checks if a trigger is available in game data and executes the trigger if it is found:
   function trigger(obj, trig) {
     if(obj[trig]!==undefined) {
-      if(options.debug===true) console.log("Trigger "+ trig +" found");
+      debug("Trigger "+ trig +" found");
       extensions[obj[trig].function_call](obj[trig].function_parameters);
     }
   }
@@ -663,7 +662,7 @@ var TextAdventure = (function (){
 
   // shows the help information and command list
   function displayHelp() {
-    if(options.debug===true) console.log("Displaying help");
+    debug("Displaying help");
     var helpText = "<h2>Welcome to "+options.title+"</h2>";
     helpText += "<p>"+ options.description +"</p>";
     helpText += "<p>Explore all locations, collect items and solve puzzles to beat the game. Here is a list of instructions you can use to get started:</p>";
@@ -697,7 +696,7 @@ var TextAdventure = (function (){
 
   // shows all items in the inventory
   function displayInventory() {
-    if(options.debug===true) console.log("Displaying the inventory");
+    debug("Displaying the inventory");
     var inventoryText = "<h2>Inventory</h2>";
     inventoryText += buildDefinitionList(player.getInventory());
     printLine(inventoryText, "inventory");
@@ -812,6 +811,11 @@ var TextAdventure = (function (){
 
   function addExtension(e) {
     extensions = e;
+  }
+
+  // call debug to write out a line to console
+  function debug(m) {
+    if(options.debug===true) console.log(m);
   }
 
 
