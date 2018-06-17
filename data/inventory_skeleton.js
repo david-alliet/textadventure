@@ -10,6 +10,18 @@ var inventory = {
     text_on_use_object_on: "Text shown to user when the object is used on the specified object",
     remove_after_use: false,
     depends_on: "third_object_id",
-    text_on_error: "Text shown when the third object isn't available"
+    text_on_error: "Text shown when the third object isn't available",
+    use_trigger: {
+      function_call: "function_name",
+      function_parameters: "value"
+    },
+    pickup_trigger: {
+      function_call: "function_name",
+      function_parameters: "value"
+    },
+    examine_trigger: {
+      function_call: "function_name",
+      function_parameters: "value"
+    },
   }
 };
