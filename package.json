@@ -1,0 +1,21 @@
+{
+  "name": "textadventure",
+  "version": "1.0.0",
+  "description": "A javascript text adventure game engine based on JSON files",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/david-alliet/textadventure.git"
+  },
+  "author": "David Alliet",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/david-alliet/textadventure/issues"
+  },
+  "homepage": "https://github.com/david-alliet/textadventure",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.1",
+    "gulp-rename": "^1.2.2",
+    "gulp-uglify": "^3.0.0"
+  }
+}
