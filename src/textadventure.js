@@ -437,6 +437,7 @@ var TextAdventure = (function (){
             if(resolvedDependency(o) && resolvedDependency(ou)) {
               // dependencies are resolved
               // object can be used on second object
+              debug(o + " and " + ou + "can be used together.");
               printLine(obj.text_on_use_object_on);
               locations[player.getLocation()].objects[objOnUseId].is_used = true;
               if(obj.remove_after_use) {
@@ -494,8 +495,10 @@ var TextAdventure = (function (){
           }
         } else {
           if(obj.can_use_on_object!==false) {
+            debug(o +" can not be used by itself");
             printLine("The "+ o +" can't be used that way.", "error");
           } else {
+            debug(o + "can not be used at all");
             printLine("The "+ o +" can't be used.", "error");
           }
           return false;
@@ -684,21 +687,20 @@ var TextAdventure = (function (){
     o   Object name or id to be checked for availability
   */
   function isObjectAvailable(o) {
-    debug("Checking "+ o +" for availability.");
     var objectId = "";
     if(player.inInventory(o)) {
-      debug(o +" is available as an object in player's inventory.");
+      debug(o +" found in inventory.");
       objectId = player.getItemIDFromInventory(o);
       return [objectId, player.getItemFromInventory(objectId)];
     } else {
       for(objectId in locations[player.getLocation()].objects) {
         if(objectId === o || locations[player.getLocation()].objects[objectId].name.toLowerCase() === o) {
-          debug(o +" is available as an object in the current location.");
+          debug(o +" found in location.");
           return [objectId, locations[player.getLocation()].objects[objectId]];
         }
       }
     }
-    debug(o +" is not available as an object.");
+    debug(o +" not found.");
     return false;
   }
 
@@ -729,6 +731,7 @@ var TextAdventure = (function (){
     oId   The id of the object or direction to check
   */ 
   function resolvedDependency(oId) {
+    debug("**** DEPENDENCY TEST ****");
     debug("Testing "+ oId +" for dependencies.");
     var obj, objId, objDep;
 
