@@ -1,0 +1,99 @@
+.dal-ta {
+  background: #eee;
+  font-family: monospace;
+  width: 100%;
+}
+.dal-ta .dal-ta-output {
+  box-sizing: content-box;
+  display: inline-block;
+  overflow: scroll;
+  vertical-align: bottom;
+  width: 100%;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item {
+  border-bottom: 1px #6d6d6d dotted;
+  box-sizing: border-box;
+  color: #222;
+  padding: 1em;
+  width: 100%;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item h2 {
+  color: #05679a;
+  font-size: 1.2em;
+  font-weight: bold;
+  margin: 0 0 0.5em;
+  padding: 0;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item p {
+  margin: 0.5em 0 0;
+  padding: 0;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item:last-child {
+  border-bottom: 0 none;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item:after {
+  clear: both;
+  float: none;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item dl {
+  margin: 0.5em 0;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item dl dt {
+  box-sizing: border-box;
+  clear: left;
+  color: #05679a;
+  display: inline-block;
+  float: left;
+  margin: 0.25em 0;
+  padding-right: 1em;
+  text-align: right;
+  width: 20%;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item dl dd {
+  box-sizing: border-box;
+  clear: right;
+  display: inline-block;
+  float: left;
+  margin: 0.25em 0;
+  padding: 0;
+  width: 80%;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item .object {
+  color: #05679a;
+  font-weight: bold;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item .direction {
+  color: #05679a;
+  font-style: italic;
+}
+.dal-ta .dal-ta-output .dal-ta-output-item:after, .dal-ta .dal-ta-output .dal-ta-output-item:before {
+  content: " ";
+  display: table;
+}
+.dal-ta .dal-ta-output:after {
+  clear: both;
+  float: none;
+}
+.dal-ta .dal-ta-input {
+  border-top: 1px #05679a solid;
+  width: 100%;
+}
+.dal-ta .dal-ta-input input {
+  background: #eee;
+  border: 0;
+  box-sizing: border-box;
+  color: #05679a;
+  font-family: monospace;
+  font-size: 1.05em;
+  margin: 0;
+  padding: 1em;
+  width: 100%;
+}
+.dal-ta .dal-ta-input input:focus {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  outline: unset;
+}
+
+/*# sourceMappingURL=css/textadventure.css.map */

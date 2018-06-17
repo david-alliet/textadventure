@@ -1,26 +1,14 @@
 # Text-adventure engine
 
-1. What is it
-1. Game features
-  * General structure
-  * Save / resume
-  * Extend with custom functionality
-1. Installing and running the engine
-  * Initialization
-  * Extending the game
-1. Game data structure
-  * Locations
-  * Objects
-
 ## What is it?
 
-This is a javascript text adventure game engine. Its aim is to be very fast, not dependent on 3rd party frameworks or libraries (only vanilla javascript), easy to write games in (using JSON data format) and easy to extend with custom functionality. It isn't a parser based engine (if you are looking for that, i suggest using Parchment), but built around set of standard commands.
+This is a javascript text adventure game engine. Its aim is to be very fast, not dependent on 3rd party frameworks or libraries (only vanilla javascript), easy to write games in (using JSON data format) and easy to extend with custom functionality. It isn't a parser based engine - if you are looking for that, i suggest using Parchment. Instead, the game can be controlled using standard commands, although variations for certain commands can be accounted for in the game data.
 
 ## Game features
 
 ### General structure
 
-As with most text adventures, this engine provides for a game built up out of a series of **locations** linked together by **directions**. The **player** can pick up **objects** which are kept in her **inventory**, and can be used by themselves or on other objects found in the various locations. The player must make her way through the locations and meet a set of **conditions** in order to be victorious.
+As with most text adventures, this engine provides for a game built up out of a series of **locations** linked together by **directions**. The **player** can pick up **objects** which are kept in her **inventory**, and can be used by themselves or on other objects found in the various locations. Locations can also trigger **prompts**, which will offer a choice to the player, with possible unique outcomes. The player must make her way through the locations and meet a set of **conditions** in order to be victorious. 
 
 ### Save/resume
 
@@ -33,7 +21,7 @@ The game can be extended with extra functionality. You can program your own java
 ## Installing and running the engine
 
 1. Download the engine js file
-1. Write your game following in following the proper data structure.
+1. Write your game following the proper data structure.
 1. Add the js file of the engine to your page and initialize the engine with your JSON game data variables.
 1. Optionally program an object with publicly exposed functions to extend the functionality of the engine.
 
@@ -79,7 +67,7 @@ trigger: {
 }
 ```
 
-The name defined in ```function_call``` is the name of a publicly available function in your extend object. The value of ```function_parameters``` is passed to the function. This value can be anything basic javascript data type: numbers, strings, arrays and even JSON objects.
+The name defined in ```function_call``` is the name of a publicly available function in your extend object. The value of ```function_parameters``` is passed to the function. This value can be anything basic javascript data type: numbers, strings, arrays and even JSON objects; as long as you make sure your callback function properly handles the attribute.
 
 Each trigger is executed on different moments. These are the supported triggers and when they are executed:
 

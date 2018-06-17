@@ -1,31 +1,47 @@
-// The player object holds functionalities and data related specifically to the player
 var Player = (function() {
 
   var currentLocation = "";
-  var atObject = "";  // currently unused...
   var inventory = {};
 
+
+  
+  /*
+    Initialize the player object
+    ---
+    si  Starting inventory
+  */
   function init(si) {
     console.log("Initializing the player object");
     inventory = si;
   }
 
-  // allows to get the current location of the player
+
+
+  /* 
+    Get the current location id of the player
+  */
   function getLocation() {
     return currentLocation;
   }
 
-  // allows to set the current location of the player
+
+
+  /* 
+    Set the current location of the player
+    ---
+    l   New location id
+  */
   function setLocation(l) {
     currentLocation = l;
   }
 
 
-  // *******************
-  // inventory functions
-  // *******************
-
-  // checks if an item is in the inventory
+  
+  /*
+    Check if an object is in the inventory
+    ---
+    item   object id
+  */
   function inInventory(item) {
     for(var object in inventory) {
       if(object===item || inventory[object].name===item) return true;
@@ -33,17 +49,36 @@ var Player = (function() {
     return false;
   }
 
-  // adds an item to the inventory
+
+
+  /*
+    Adds an item to the player's inventory
+    ---
+    id    the id of the object 
+    item  the object with all its properties
+  */
   function addItemToInventory(id, item) {
     inventory[id] = item;
   }
 
-  // delete an item from the inventory
+
+
+  /*
+    Delete an object from the inventory
+    ---
+    id  id of the object to be deleted
+  */
   function deleteItemFromInventory(id) {
     delete inventory[id];
   }
 
-  // retrieves a specific item from the inventory based on an id
+
+
+  /*
+    Get a specific item from the inventory
+    ---
+    id  id of the object to be retrieved
+  */
   function getItemFromInventory(id) {
     for(var item in inventory) {
       if(item===id || inventory[item].name===id)
@@ -51,7 +86,13 @@ var Player = (function() {
     }
   }
 
-  // retrieves the id of an item based on its name
+
+
+  /*
+    Get the id of a specific item from the inventory based on its name
+    ---
+    name  the name of a possible inventory item
+  */
   function getItemIDFromInventory(name) {
     for(var item in inventory) {
       if(inventory[item].name===name)
@@ -59,16 +100,29 @@ var Player = (function() {
     }
   }
 
-  // returns the full inventory
+
+
+  /*
+    Get the full inventory
+  */
   function getInventory() {
     return inventory;
   }
 
-  // set the full inventory (handy for saving functionality)
+  
+  
+  /*
+    Overwrite the complete inventory (used when loading the game from a save)
+    ---
+    inv the new inventory
+  */
   function setInventory(inv) {
     inventory = inv;
   }
 
+
+
+  
   return {
     init: init,
     getLocation: getLocation,

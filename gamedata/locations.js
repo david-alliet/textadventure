@@ -1,109 +1,72 @@
 var locations = {
-  "office": {
-    name: "David's office",
-    description: "An office",
-    text_on_visit: "You enter the office. There is a [computer](object) on a desk and a door to the [south](direction) and some other text here.",
-    directions: {
-      "south": {
-        location: "hallway",
-        depends_on: "",
-        text_on_error: ""
-      }
-    },
-    objects: {
-      "office_computer": {
-        name: "computer",
-        description: "A computer on a desk",
-        can_use: true,
-        text_on_use: "It goes beep",
-        can_pickup: false,
-        text_on_pickup: "",
-        can_use_on_object: false,
-        text_on_use_object_on: "",
-        remove_after_use: false,
-        depends_on: ""
-      },
-      "office_desk": {
-        name: "desk",
-        description: "A desk with a drawer. There is a computer on it.",
-        can_use: false,
-        text_on_use: "",
-        can_pickup: false,
-        text_on_pickup: "",
-        can_use_on_object: false,
-        text_on_use_object_on: "",
-        remove_after_use: false,
-        depends_on: ""
-      },
-      "office_drawer": {
-        name: "drawer",
-        description: "The drawer of the office desk. Perhaps there is something inside?",
-        can_use: true,
-        text_on_use: "You open the drawer. Inside there is a trinket.",
-        can_pickup: false,
-        text_on_pickup: "",
-        can_use_on_object: false,
-        text_on_use_object_on: "",
-        remove_after_use: false,
-        depends_on: ""
-      },
-      "office_trinket": {
-        name: "trinket",
-        description: "It's a trinket. It's use and value is not apparent",
-        can_use: false,
-        text_on_use: "",
-        can_pickup: true,
-        text_on_pickup: "You picked up the trinket. You never know if it'll come in handy.",
-        can_use_on_object: false,
-        text_on_use_object_on: "",
-        remove_after_use: false,
-        depends_on: "office_drawer",
-        text_on_error: "You can't reach the trinket."
-      }
-
-    }
-  },
-  "hallway": {
-    name: "Hallway",
-    description: "A halway with a few doors",
-    text_on_visit: "You find yourself in a long hallway, the office is to the [north](direction).",
-    directions: {
-      "north": {
-        location: "office",
-        depends_on: "hallway_door",
-        text_on_error: "A locked door blocks your way."
-      }
-    },
-    objects: {
-      "hallway_door": {
-        name: "door",
-        description: "The door leading to the office. It appears closed",
-        can_use: false,
-        text_on_use: "",
-        can_pickup: false,
-        text_on_pickup: "",
-        can_use_on_object: false,
-        text_on_use_object_on: "",
-        remove_after_use: false,
-        depends_on: ""
-      },
-      "hallway_button": {
-        name: "button",
-        description: "A button labeled 'greetings'.",
-        can_use: true,
-        text_on_use: "You pressed the strange button.",
-        use_trigger: {
-          function_call: "hello",
-          function_parameters: "david"
+  "start": {
+    name: "Starting location",
+    description: "",
+    text_on_visit: "",
+    objects: {},
+    prompts: {
+      "hat": {
+        prompt_text: "White hat or black hat?",
+        responses: {
+          "hat_white":  {
+            valid_commands: "white, w, white hat",
+            response_text: "You have chosen white hat",
+            goto_location: "wh_start"
+          },
+          "hat_black": {
+            valid_commands: "black, b, black hat",
+            response_text: "you have chosen black hat",
+            goto_location: "bh_start"
+          }
         },
-        can_pickup: false,
-        text_on_pickup: "",
-        can_use_on_object: false,
-        text_on_use_object_on: "",
-        remove_after_use: false,
-        depends_on: ""
+        has_prompted: false,
+        can_repeat: false
       }
     }
   },
-  startlocation: "hallway"
+  "wh_start": {
+    name: "White hat starting location",
+    description: "Starting location for the white hat",
+    text_on_visit: "White hat path first location",
+    directions: {
+      "direction indicator": {
+        location: "another_location_id",
+        depends_on: "object_id",
+        text_on_error: "Text shown to users when trying to go in this directions when dependencies aren't met"
+      },
+    },
+    visit_trigger: {
+      function_call: "",
+      function_parameters: ""
+    },
+    objects: {
+      "object_id": {
+        name: "Object name",
+        description: "Object description",
+        can_use: true,
+        text_on_use: "Text shown to users when using this object",
+        can_pickup: true,
+        text_on_pickup: "Text shown to users when object is picked up",
+        can_use_on_object: "use_object_id",
+        text_on_use_object_on: "Text shown to users when object is used (correctly) on another object",
+        remove_after_use: false,
+        depends_on: "",
+        text_on_error: "Text shown when object is not used correctly"
+      },
+      "use_object_id": {
+        name: "Another object name",
+        description: "Object description",
+        can_use: true,
+        text_on_use: "Text shown to users when using this object",
+        can_pickup: true,
+        text_on_pickup: "Text shown to users when object is picked up",
+        can_use_on_object: false,
+        text_on_use_object_on: "Text shown to users when object is used (correctly) on another object",
+        remove_after_use: false,
+        depends_on: "",
+        text_on_error: "Text shown when object is not used correctly"
+      }
+    }
+  },
+  startlocation: "start"
 };

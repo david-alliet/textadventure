@@ -1,0 +1,44 @@
+body {
+  background: #222;
+  font-family: sans-serif;
+  font-size: 95%;
+  margin: 0;
+  padding: 0;
+}
+
+header,
+article {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 44em;
+  width: 100%;
+}
+
+header {
+  color: #eee;
+  margin: 2em auto;
+  text-align: center;
+}
+header h1 {
+  font-size: 3em;
+  font-weight: normal;
+  margin: 0;
+}
+header p {
+  font-size: 1.1em;
+  margin: 0;
+}
+header a {
+  border-bottom: 1px dotted #05679a;
+  color: #eee;
+  text-decoration: none;
+}
+header a:hover {
+  color: #05679a;
+}
+
+article {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/*# sourceMappingURL=css/main.css.map */

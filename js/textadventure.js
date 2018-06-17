@@ -1,13 +1,18 @@
-// The main textadventure object that will hold most of the functionality to control the game
 var TextAdventure = (function (){
-  // UI elements and properties
 
   // properties and gamedata of the Text Adventure
   var locations = {};
+  var newGameLocations = {};      // copy of the initial locations object to use when restarting
+  var newStartingInventory = {};  // copy of initial starting inventory to use when restarting
   var victoryConditions = {};
   var options;
   var player;
   var extensions;
+  
+  // game essential variables
+  var usedObjects = [];   // Stores list of used objects so victory conditions can be checked
+  var promptMode = false; // sets the game in prompt mode when needed
+  var currentPrompt = []; // references to the current prompt (prompts can be nested)
 
   // UI elements
   var container;
@@ -20,25 +25,37 @@ var TextAdventure = (function (){
   var firstMessageDisplayed = false;
   var timer;
   var timerInterval = 10;
-  var usedObjects = [];
   var typedCommands = [];
   var typedCommandsIndex = 0;
   var storage;
   var canStore = false;
+  
+  /*
+    Init the game, gets passed the <div> container and the desired height of the box
+    ---
+    cid container id
+    o   options
+    l   game data, locations
+    vc  game data, victory conditions object
+    i   game data, player inventory
+  */
+  function init(containerId, gameOptions, locationsData, gameVictoryConditions, startingInventory) {
 
-
-  // init the game, gets passed the <div> container and the desired height of the box
-  function init(cid, o, l, vc, i) {
-
+    
+    // story copy of locations and inventory data so game can be reset
+    newGameLocations = locationsData;
+    newStartingInventory = startingInventory;
+    
     // load in options and do some checking for validity
-    options = o;
+    options = gameOptions;
     if(options.height!==undefined && typeof options.height !== "number") {
       // set height to undefined if it isn't a number:
       options.height = undefined;
     }
+    debug("***** LOADING GAME *****");
     debug("Initializing text adventure");
 
-    container = document.getElementById(cid);
+    container = document.getElementById(containerId);
 
     // detect local storage capabilities
     try {
@@ -61,7 +78,7 @@ var TextAdventure = (function (){
       canStore = false;
     }
 
-    victoryConditions = vc;
+    victoryConditions = gameVictoryConditions;
 
     // assign the tutorial messages:
     tutorialMessages = ["To play, type an instruction followed by RETURN.",
@@ -77,7 +94,7 @@ var TextAdventure = (function (){
 
     // check for existing saves:
     if(canStore && storage.getItem("TA_CURRENTLOCATION")!==null) {
-      if(options.debug) console.log("Local save found, resuming save.");
+      debug("Local save found, resuming save.");
       // save found, loading in saved locations object
       locations = storage.getObject("TA_LOCATIONS");
       // Initialize player with saved inventory
@@ -98,22 +115,27 @@ var TextAdventure = (function (){
       debug("No local save available, setting up new game");
 
       // no save available, loading locations from parameters
-      locations = l;
+      locations = locationsData;
 
       // Initialize player with starting inventory
-      player.init(i);
+      player.init(startingInventory);
       // set current location to starting location
       player.setLocation(locations.startlocation);
     }
 
     // print the current location text:
     printLine(locations[player.getLocation()].text_on_visit);
+    // check if the location has a prompt
+    checkForPrompt(locations[player.getLocation()]);
     // when a save has been loaded, it's good to check for victory on init.
     checkForVictory();
   }
 
 
-  // set up the text adventure container with all the neccesary UI elements
+  
+  /*
+    Set up the text adventure container with all the neccesary UI elements
+  */
   function prepareContainer() {
     debug("Preparing container with game elements");
     container.innerHTML = "";
@@ -178,111 +200,122 @@ var TextAdventure = (function (){
   }
 
 
-  // parse incoming commands
-  function parseCommand(c) {
+
+  /*
+    Parse incoming commands
+    ---
+    command  command received from the input field
+  */
+  function parseCommand(command) {
     var actionTaken = false;
-    debug("Received command : "+ c);
+
+    debug("***** COMMAND *****");
+    debug("Received command : "+ command);
 
     // convert the entire command into lower case
-    c = c.toLowerCase();
-    // break command into spaces
-    var cl = c.split(" ");
+    command = command.toLowerCase().trim();
 
-    var objectString = "";
-    var i=0;
+    // check if the game is in prompt mode
+    if(promptMode) {
+      debug("Game in prompt mode: checking command against active prompt choices"); 
+      // load up the current response
+      // TODO: find a way to do this without using eval!!
+      var responseObj = {};
+      var validResponseFound = false;
 
-    // evaluate command based on first element:
-    switch(cl[0]) {
+      for(var response in eval("locations[player.getLocation()]" + getCurrentPrompt()).responses ) {
+        // only do this if a matching prompt answer hasn't already been found:
+        if(!actionTaken) {
+          responseObj = eval("locations[player.getLocation()]" + getCurrentPrompt()).responses[response];
 
-      case "help":
+          // compare input from player with valid commands in the response object, if match, execute this prompt
+          if(responseObj.valid_commands.toLowerCase().indexOf(command) !== -1) {
+            // command found: execute!
+            printLine(responseObj.response_text);
+            actionTaken = true;
+            // indicate that this prompt has been shown in case it shouldn't be repeated
+            eval("locations[player.getLocation()]" + getCurrentPrompt()).has_prompted = true;
+            // check if there is another prompt associated on this object
+            if(!checkForPrompt(responseObj)) {
+              // no further prompts found, resume normal mode:
+              promptMode = false;
+              // check if the user should be redirect to another location:
+              if(responseObj.goto_location !== undefined && responseObj.goto_location !== "") {
+                moveToLocation(responseObj.goto_location);
+              }
+            }
+
+          }
+        }
+      }   
+
+    } else {
+      // not in prompt mode: continuing in regular mode
+
+      var matchLength = 0;
+
+      if(command === "help") {
+        // display help
         displayHelp();
-        break;
 
-      case "inventory":
+      } else if(command === "inventory") {
+        // display inventory
         displayInventory();
-        break;
 
-      case "go":
-        if(cl[1]===undefined) {
-          printLine("Please specify where you want to go.", "error");
-        } else  if(cl[1]==="to") {
-          // to do, if needed, move to a named location or object
-          debug("Moving to object "+ cl[2]);
+      } else if(command === "look around") {
+        // display location description
+        printLine(locations[player.getLocation()].description);
+
+      } else if(command.search(/^(pick up|take|grab)\s/) !== -1) {
+        // pick up command
+        // get the length of what was matched
+        matchLength = command.match(/^(pick up|take|grab)\s/)[0].length;
+        // use the length to determine what is being picked up, discarding "the" if it's there
+        var pickedupObject = command.substring(matchLength).replace("the ", "");
+        // proceed with picking it up: 
+        actionTaken = validatePickup(pickedupObject);
+
+      } else if(command.search(/^(examine|look at)\s/) !== -1) {
+        // examine command
+        // get the length of what was matched
+        matchLength = command.match(/^(examine|look at)\s/)[0].length;
+        // use the length to determine what is being picked up, discarding "the" if it's there
+        var examinedObject = command.substring(matchLength).replace("the ", "");
+        // examine the object
+        validateExamine(examinedObject);
+
+      } else if(command.search(/^(go|move)\s/) !== -1) {
+        // go command
+        // get the length of what was matched
+        matchLength = command.match(/^((?:go|move)(?:\sto)?)\s/)[0].length;
+        // use the length to determine what is being picked up, discarding "the" if it's there
+        var direction = command.substring(matchLength).replace("the ", "");
+        // move to this direction 
+        actionTaken = validateMoveDirection(direction);
+
+      } else if(command.search(/^(use)\s/) !== -1) {
+        // use command
+        // tests for which version of the command: 
+        var test1 = /^(?:use)\s(.*)(?:\son\s)(.*)/;
+        var test2 = /^(?:use)\s(.*)/;
+        var results = [];
+        // test the first version:
+        if(command.search(test1) !== -1) {
+          // command is "use x on y":
+          results = command.match(test1);
+          actionTaken = validateUse(results[1].replace("the ", ""), results[2].replace("the ", ""));
         } else {
-          actionTaken = validateMoveDirection(cl[1]);
+          // command is just use x:
+          results = command.match(test2);
+          actionTaken = validateUse(results[1].replace("the ", ""), "");
         }
-        break;
-
-      case "use":
-        // loop through words to see if there is an "on" modifier
-        var onPos;
-        for(i=1; i<cl.length; i++) {
-          if(cl[i]==="on") {
-            onPos = i;
-          }
-        }
-        var objectPosEnd = (onPos===undefined) ? cl.length-1 : onPos-1;
-
-        // get string for object to use
-        for(i=1; i<=objectPosEnd; i++) {
-          objectString += cl[i]+" ";
-        }
-        objectString = objectString.trim();
-        debug("Use object: "+ objectString);
-
-        // get string for object to use should be acted on
-        var objectOnString = "";
-        if(onPos!==undefined) {
-          for(i=onPos+1; i<cl.length; i++) {
-            objectOnString += cl[i]+" ";
-          }
-          objectOnString = objectOnString.trim();
-        }
-        debug("Object to be used on: "+ objectOnString);
-
-        // check to see if object(s) to be used are valid
-        actionTaken = validateUse(objectString, objectOnString);
-        break;
-
-      // pick ups
-      case "pick":
-        if(cl[1]==="up") {
-          objectString = "";
-          for(i=2; i<cl.length; i++) {
-            objectString += cl[i] + " ";
-          }
-          objectString = objectString.trim();
-          actionTaken = validatePickup(objectString);
-        }
-        break;
-
-      case "examine":
-        if(cl[1]===undefined) {
-          printLine("Nothing to examine.", "error");
-        } else {
-          // examine what?
-          var examineString = "";
-          for(i=1; i<cl.length; i++) {
-            examineString += cl[i]+" ";
-          }
-          examineString = examineString.trim();
-          validateExamine(examineString);
-        }
-        break;
-
-      case "look":
-        if(cl[1]==="around") {
-          printLine(locations[player.getLocation()].description);
-        } else {
-          printLine("That instruction wasn't understood.", "error");
-        }
-        break;
-
-      default:
+      } else {
+        // invalid command
         printLine("That instruction wasn't understood.", "error");
-        break;
+      }
 
     }
+
 
     // tutorial messages:
     // increase message count and print out tutorial placeholders based on it
@@ -295,24 +328,30 @@ var TextAdventure = (function (){
 
     // inputted command list
     // add typed in command to list of commands:
-    typedCommands.push(c);
+    typedCommands.push(command);
     typedCommandsIndex = typedCommands.length;
 
     // in this turn, an action has been taken that requires a save and check for victory
     if(actionTaken) {
       if(canStore) {
-        if(options.debug) console.log("Actionable turn, saving progress");
+        debug("Actionable turn, saving progress");
         saveProgress();
       }
-      if(options.debug) console.log("Actionable turn, checking for victory");
+      debug("Actionable turn, checking for victory");
       checkForVictory();
     } else {
-      if(options.debug) console.log("Not an actionable turn, no need to save or check for victory");
+      debug("Not an actionable turn, no need to save or check for victory");
     }
   }
 
 
-  // validate if a given direction is valid
+
+  /*
+    Validate if a given direction is valid
+    ---
+    d   Direction of the move 
+        This should correspond with a direction set in the game data JSON for this location
+  */
   function validateMoveDirection(d){
     debug("Testing direction "+ d +" for validity");
     var valid = false;
@@ -329,14 +368,11 @@ var TextAdventure = (function (){
     // move:
     if(valid) {
       if(!resolvedDependency(dirId)) {
-        debug("Access to this location was blocked");
+        debug("Access to this location is blocked");
         printLine(locations[player.getLocation()].directions[dirId].text_on_error, "error");
         return false;
       } else {
-        debug("Moving to location "+ l);
-        player.setLocation(locations[player.getLocation()].directions[d].location);
-        printLine(locations[player.getLocation()].text_on_visit);
-        trigger("visit_trigger", location[player.getLocation()]);
+        moveToLocation(locations[player.getLocation()].directions[d].location);
         return true;
       }
     } else {
@@ -344,70 +380,96 @@ var TextAdventure = (function (){
       return false;
     }
   }
+  
+  
+  
+  /* 
+  Move the game to a new location: 
+  ---
+  newLocation   the location to move to
+  */
+  function moveToLocation(newLocation) {
+    debug("Moving to location "+ newLocation);
+    // set the new location for the player
+    player.setLocation(newLocation);
+    // print the entry text
+    printLine(locations[player.getLocation()].text_on_visit);
+    // check for a trigger
+    trigger(locations[player.getLocation()], "visit_trigger");
+    // check for prompt on new location: 
+    checkForPrompt(locations[player.getLocation()]);
+  }
 
 
-  // validate if specified objects can be used
+
+  /* 
+    Validate if specified objects can be used
+    ---
+    o   Object 1: the object being used.
+    ou  Object 2: the object which Object 1 is being used on
+  */
   function validateUse(o, ou) {
     debug("Testing objects for valid use: "+ o +", "+ ou);
     var validObject = false;
     var validObjectUse = false;
     var obj, objId, objOnUse, objOnUseId;
-    // object available
-    if(isObjectAvailable(o)) {
-      // in player inventory?
-      if(player.inInventory(o)) {
-        objId = player.getItemIDFromInventory(o);
-        obj = player.getItemFromInventory(o);
-      } else {
-        for(var object in locations[player.getLocation()].objects) {
-          if(locations[player.getLocation()].objects[object].name === o) {
-            objId = object;
-            obj = locations[player.getLocation()].objects[object];
-          }
-        }
-      }
-      // second object?
+
+    // find the first object: 
+    var foundObject1 = isObjectAvailable(o);
+    // is it object available
+    if(foundObject1 !== false) {
+      objId = foundObject1[0];
+      obj = foundObject1[1];
+      
+      // is there a second object?
       if(ou!=="") {
-        // check if the 2nd specified object is valid
-        if(player.inInventory(ou)){
-          objOnUseId = getItemIDFromInventory(ou);
-          objOnUse = player.getItemFromInventory(ou);
-        } else {
-          for(var object2 in locations[player.getLocation()].objects) {
-            if(locations[player.getLocation()].objects[object2].name === ou) {
-              objOnUseId = object2;
-              objOnUse = locations[player.getLocation()].objects[object2];
+        // SECOND OBJECT:
+
+        // check if the 2nd specified object is available
+        var foundObject2 = isObjectAvailable(ou);
+        if(foundObject2 !== false) {
+          objOnUseId = foundObject2[0];
+          objOnUse = foundObject2[1];
+
+          // can the object be used on the second object
+          if(obj.can_use_on_object === objOnUseId) {
+            // check dependencies for both objects
+            if(resolvedDependency(o) && resolvedDependency(ou)) {
+              // dependencies are resolved
+              // object can be used on second object
+              printLine(obj.text_on_use_object_on);
+              locations[player.getLocation()].objects[objOnUseId].is_used = true;
+              if(obj.remove_after_use) {
+                player.deleteItemFromInventory(objId);
+              }
+              // keep track of used objects (by id) in an array
+              usedObjects.push(objId);
+              // should custom code be executed?
+              trigger(obj, "use_trigger");
+              return true;
+            } else {
+              // which dependency needs to be resolved?
+              if(!resolvedDependency(objId)) {
+                debug(o +" has an unresolved dependency");
+                printLine(obj.text_on_error);
+              } else if(!resolvedDependency(objOnUseId)) {
+                debug(ou +" has an unresolved dependency");
+                printLine(objOnUse.text_on_error);
+              }
+              return false;
             }
-          }
-        }
-        if(objOnUseId!==undefined && obj.can_use_on_object === objOnUseId) {
-          // check dependencies for both objects
-          if(resolvedDependency(o) && resolvedDependency(ou)) {
-            // dependencies are resolved
-            // object can be used on second object
-            printLine(obj.text_on_use_object_on);
-            locations[player.getLocation()].objects[objOnUseId].is_used = true;
-            if(obj.remove_after_use) {
-              player.deleteItemFromInventory(objId);
-            }
-            // keep track of used objects (by id) in an array
-            usedObjects.push(objOnUseId);
-            // should custom code be executed?
-            trigger(obj, "use_trigger");
-            return true;
           } else {
-            // which dependency needs to be resolved?
-            if(!resolvedDependency(o)) {
-              printLine(obj.text_on_error);
-            } else if(!resolvedDependency(objOnUseId)) {
-              printLine(objOnUse.text_on_error);
-            }
+            debug(o +" can not be used on "+ ou);
+            printLine("Can't use the "+ o +" that way.", "error");
             return false;
           }
+
         } else {
-          printLine("Can't use the "+ o +" that way.", "error");
-          return false;
+          // second object can't be found: 
+          printLine(ou + " isn't here to use", "error");
         }
+        
+        
       } else {
         // can object be used
         if(obj.can_use) {
@@ -446,73 +508,92 @@ var TextAdventure = (function (){
   }
 
 
-  // validates the examine command and executes it
+
+  /*
+    Validates if an object can be examined
+    ---
+    q   The object to be examined
+  */
   function validateExamine(q) {
-    if(options.debug) console.log("Testing "+ q +" for examine");
-
+    debug("Testing "+ q +" for examine");
+    // check object availability
+    var obj = isObjectAvailable(q);
     // is it a valid object ?
-    if(isObjectAvailable(q)) {
-      var obj;
-      if(player.inInventory(q)) {
-        obj = player.getItemFromInventory(q);
-      } else {
-        for(var object in locations[player.getLocation()].objects) {
-          if(locations[player.getLocation()].objects[object].name === q) {
-            obj = locations[player.getLocation()].objects[object];
-          }
-        }
-      }
-      printLine(obj.description);
-      trigger("examine_trigger", obj);
+    if(obj !== false) {
+      printLine(obj[1].description);
+      trigger(obj, "examine_trigger");
     } else {
-      printLine("You can't examine "+ q, "error");
+      printLine(q + " is not something you can examine.", "error");
     }
   }
 
 
-  // checks if an object can be picked up
+
+  /* 
+    Checks if an object can be picked up
+    ---
+    o   The object to be picked up
+  */
   function validatePickup(o) {
+    
     debug("Testing object "+ o +" for picking up.");
+
     // is the object to pick up available?
-    if(!isObjectAvailable(o)) {
-      printLine("There is no "+ o +" to pick up.", "error");
+    var foundObject = isObjectAvailable(o);
+
+    if(foundObject===false) {
+      // object wasn't found:
+      printLine(o +" can not be picked up.", "error");
+
     } else {
-      for(var object in locations[player.getLocation()].objects) {
-        if(locations[player.getLocation()].objects[object].name===o) {
-          obj = locations[player.getLocation()].objects[object];
-          if(obj.can_pickup) {
-            if(obj.picked_up) {
-              printLine("You have already picked up the "+ o, "error");
-              return false;
-            } else if(!resolvedDependency(o)) {
-              printLine(obj.text_on_error);
-              return false;
-            } else {
-              // add to inventory
-              player.addItemToInventory(object, obj);
-              // indicate the object is picked up
-              locations[player.getLocation()].objects[object].picked_up = true;
-              // output message
-              printLine("You put the "+ obj.name +" in your inventory");
-              trigger("pickup_trigger", obj);
-              return true;
-            }
-          } else {
-            printLine("You can't pick up the "+ o, "error");
-            return false;
-          }
+
+      var objectID = foundObject[0];
+      var obj = foundObject[1];
+
+      if(obj.can_pickup) {
+        // object can be picked
+        if(obj.picked_up) {
+          // but has been picked up already
+          printLine("You have already picked up the "+ o, "error");
+          return false;
+        } else if(!resolvedDependency(objectID)) {
+          // but depends on a another object which isn't yet met  
+          printLine(obj.text_on_error);
+          return false;
+        } else {
+          // can definitely be picked up:
+          // add to inventory
+          player.addItemToInventory(objectID, obj);
+          // indicate the object is picked up
+          locations[player.getLocation()].objects[objectID].picked_up = true;
+          // output message
+          printLine("You put the "+ obj.name +" in your inventory");
+          trigger(obj, "pickup_trigger");
+          return true;
         }
+
+      } else {
+        // object exists but can't be picked up
+        printLine("You can't pick up the "+ o, "error");
+        return false;
       }
+
     }
   }
 
 
-  // Check for victory conditions:
-  // takes the list of victory conditons and checks if they are met
+
+  /* 
+    Check for victory conditions:
+    This function takes the list of victory conditons passed to the game earlier and checks if they are met
+  */
   function checkForVictory() {
     var objId = "";
     var foundObj = false;
     // check for location:
+
+    debug("***** VICTORY CONDITIONS CHECK *****");
+
     if(victoryConditions.conditions.in_location==="" || victoryConditions.conditions.in_location===player.getLocation()) {
       // check for picked up objects
       for (var i=0; i<victoryConditions.conditions.have_objects.length; i++) {
@@ -549,18 +630,71 @@ var TextAdventure = (function (){
   }
 
 
-  // checks if an object is available in the player inventory or in the current location
-  // returns true or false
+
+  /*
+    Check for prompt: shows prompt is available
+    ---
+    obj   The object to check for prompts
+  */
+  function checkForPrompt(obj) {
+    // check if player location has a prompt:
+    debug("***** PROMPTS *****");
+    if(obj.prompts === undefined) {
+      debug("No pompt found");
+      return false;
+    }
+    var prompt = obj.prompts[Object.keys(obj.prompts)[0]];
+    if(prompt !== undefined) {
+      // a prompt has been found!
+      debug("Prompt found");
+      // check if this has prompted before or if it can be repeated
+      if(!prompt.has_prompted || (prompt.has_prompted && prompt.can_repeat) )  {
+        debug("Prompt can be shown");
+        promptMode = true;
+        currentPrompt.push(Object.keys(locations[player.getLocation()].prompts)[0]);
+        debug("Current prompt: "+ currentPrompt);
+        printLine(prompt.prompt_text);
+      } else {
+        debug("Prompt can't be shown");
+        return false;
+      }
+    }
+  }
+
+
+
+  /* 
+    Looks at the current prompt array and retrieves the object based on it
+  */
+  function getCurrentPrompt() {
+    var currentPromptRef = "";
+    for(var i=0; i<currentPrompt.length; i++) {
+      currentPromptRef += ".prompts."+ currentPrompt[i];
+    }
+    return currentPromptRef;
+  }
+
+
+
+  /* 
+    Checks if an object is available in the player inventory or in the current location
+    Returns false if no object is available
+    Rerturns an array containing the object ID and object itself when available
+    ---
+    o   Object name or id to be checked for availability
+  */
   function isObjectAvailable(o) {
     debug("Checking "+ o +" for availability.");
+    var objectId = "";
     if(player.inInventory(o)) {
-      debug(o +" is available as an object.");
-      return true;
+      debug(o +" is available as an object in player's inventory.");
+      objectId = player.getItemIDFromInventory(o);
+      return [objectId, player.getItemFromInventory(objectId)];
     } else {
-      for(var object in locations[player.getLocation()].objects) {
-        if(locations[player.getLocation()].objects[object].name === o) {
-          debug(o +" is available as an object.");
-          return [object, locations[player.getLocation()].objects[object]];
+      for(objectId in locations[player.getLocation()].objects) {
+        if(objectId === o || locations[player.getLocation()].objects[objectId].name.toLowerCase() === o) {
+          debug(o +" is available as an object in the current location.");
+          return [objectId, locations[player.getLocation()].objects[objectId]];
         }
       }
     }
@@ -569,8 +703,14 @@ var TextAdventure = (function (){
   }
 
 
-  // NOTE: Can we do this in isObjectAvailable function?
-  // find an object in the locations object, returns the id of object if found, returns false if not found
+  
+  /* 
+    Find an object in the locations object, returns the id of object if found, returns false if not found
+    ---
+    o   The object to find
+    ---
+    NOTE: could possibly be done in the isObjectAvailable function
+  */
   function findObjectInLocation(o) {
     for(var object in locations[player.getLocation()].objects) {
       if(locations[l].objects[object].name===o) {
@@ -581,29 +721,25 @@ var TextAdventure = (function (){
   }
 
 
-  // checks if there is an object dependency on the query and if it is fulfilled
-  // returns true if dependency is resolved, false if there is a dependency to resolve
+
+  /* 
+    Checks if there is an object dependency on the query and if it is fulfilled
+    Returns true if dependency is resolved, false if there is a dependency to resolve
+    --
+    oId   The id of the object or direction to check
+  */ 
   function resolvedDependency(oId) {
     debug("Testing "+ oId +" for dependencies.");
     var obj, objId, objDep;
 
+    var foundObject = isObjectAvailable(oId);
+
     // is it a direction or an object:
-    if(isObjectAvailable(oId)){
+    if(foundObject !== false){
       // is the object in the inventory?
-      if(player.inInventory(oId)) {
-        // get the object from the inventory
-        objId = player.getItemIDFromInventory(oId);
-        obj = player.getItemFromInventory(oId);
-      } else {
-        // not in inventory, get the object from the scene
-        for(var object in locations[player.getLocation()].objects) {
-          if(locations[player.getLocation()].objects[object].name === oId) {
-            objId = object;
-            obj = locations[player.getLocation()].objects[object];
-          }
-        }
-      }
-      // is there a dependency?
+      objID = foundObject[0];
+      obj = foundObject[1];
+
       if(obj.depends_on!=="") {
         // there is!
         // get the object to check if it has been used
@@ -640,7 +776,10 @@ var TextAdventure = (function (){
   }
 
 
-  // save!
+
+  /*
+    Save progress in local storage
+  */ 
   function saveProgress(){
     if(canStore) {
       storage.setObject("TA_LOCATIONS", locations);
@@ -650,17 +789,61 @@ var TextAdventure = (function (){
   }
 
 
-  // trigger function checks if a trigger is available in game data and executes the trigger if it is found:
+
+  /*
+    Restart the game by reloading all game data
+  */
+  function restart() {
+    // reset some important variables
+    usedObjects = [];  
+    promptMode = false;
+    currentPrompt = [];
+    firstMessageDisplayed = false;
+    typedCommands = [];
+    typedCommandsIndex = 0;
+
+    // clear save in localstorage
+    if(canStore) {
+      storage.removeItem("TA_LOCATIONS");
+      storage.removeItem("TA_INVENTORY");
+      storage.removeItem("TA_CURRENTLOCATION");
+    }
+
+    // recreate the player object
+    player = null;
+    player = Object.create(Player);
+    player.init(newStartingInventory);
+    
+    // reset location to starting point
+    locations = newGameLocations;
+    player.setLocation(locations.startlocation);
+    
+    // go:
+    moveToLocation(player.getLocation());
+    checkForVictory();  
+  }
+
+
+
+  /*
+    Trigger function checks if a trigger is available in game data and executes the trigger if it is found
+    ---
+    obj   The object to check the trigger on
+    trig  The trigger type
+  */
   function trigger(obj, trig) {
     if(obj[trig]!==undefined) {
       debug("Trigger "+ trig +" found");
+      if(obj[trig].function_call !== undefined && obj[trig].function_call !== "")
       extensions[obj[trig].function_call](obj[trig].function_parameters);
     }
   }
 
 
 
-  // shows the help information and command list
+  /*
+    Shows the help information and command list
+  */
   function displayHelp() {
     debug("Displaying help");
     var helpText = "<h2>Welcome to "+options.title+"</h2>";
@@ -694,7 +877,10 @@ var TextAdventure = (function (){
   }
 
 
-  // shows all items in the inventory
+
+  /* 
+    Shows all items in the inventory
+  */ 
   function displayInventory() {
     debug("Displaying the inventory");
     var inventoryText = "<h2>Inventory</h2>";
@@ -703,64 +889,79 @@ var TextAdventure = (function (){
   }
 
 
-  // prints a line to the output container
-  function printLine(t, c) {
-    var item = document.createElement("div");
-    item.className = "dal-ta-output-item";
-    if(c!==undefined) {
-      item.className += " "+ c;
-    }
 
-    // replace markdown style markup with actual markup
-
-    // check if the markup is present,
-    // if it loop through the string to replace markup with actual HTML
-    var startPos = 0;
-    var foundPos = 0;
-    var parsedText = "";
-    var dataName = "";
-    var dataClass = "";
-
-    while(t.indexOf("[", startPos)!==-1) {
-      // look first occurrence of [ and get all text before it
-      foundPos = t.indexOf("[", startPos);
-      parsedText += t.substring(startPos, foundPos);
-      startPos = foundPos+1;
-      // get position of matching ] and all text between the brackets
-      foundPos = t.indexOf("]", startPos);
-      dataName = t.substring(startPos, foundPos);
-      startPos = foundPos+2;
-      // get whatever is between () to indicate its class
-      foundPos = t.indexOf(")", startPos);
-      dataClass = t.substring(startPos, foundPos);
-      startPos = foundPos+1;
-      // wrap all this in span tags
-      parsedText += "<span class=\""+ dataClass + "\">"+ dataName +"</span>";
-    }
-
-    parsedText += t.substring(startPos, t.length);
-
-    item.innerHTML = parsedText;
-    outputContainer.appendChild(item);
-
-    // adjust the top padding of the first item so the printed message gets aligned at the bottom:
-    if(!firstMessageDisplayed) {
-      firstMessageDisplayed = true;
-      // only set a padding if there is a height set in options
-      if(options.height!==undefined) {
-        item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
+  /* 
+    Prints a line to the output container
+    ---
+    textToPrint    text to write out
+    classToPrint   class to be added to the containing element (e.g. "error")
+  */
+  function printLine(textToPrint, classToPrint) {
+    // only do this if there is text to print (sometimes there might not be a text) 
+    if(textToPrint!=="") {
+      // create new div 
+      var item = document.createElement("div");
+      // add item class
+      item.className = "dal-ta-output-item";
+      // see if a class is passed and needs to be added to the 
+      if(classToPrint!==undefined) {
+        item.className += " "+ classToPrint;
       }
-    }
 
-    // scroll the item into view with an animation when there is an absolute height set in options
-    if(options.height!==undefined) {
-      window.clearInterval(timer);
-      timer = window.setInterval(animateScroll, timerInterval);
+      // replace markdown style markup with actual markup
+      // check if the markup is present,
+      // if it loop through the string to replace markup with actual HTML
+      var startPos = 0;
+      var foundPos = 0;
+      var parsedText = "";
+      var dataName = "";
+      var dataClass = "";
+
+      // TODO: replace this whole thing with a regular expression, maybe?
+      while(textToPrint.indexOf("[", startPos)!==-1) {
+        // look first occurrence of [ and get all text before it
+        foundPos = textToPrint.indexOf("[", startPos);
+        parsedText += textToPrint.substring(startPos, foundPos);
+        startPos = foundPos+1;
+        // get position of matching ] and all text between the brackets
+        foundPos = textToPrint.indexOf("]", startPos);
+        dataName = textToPrint.substring(startPos, foundPos);
+        startPos = foundPos+2;
+        // get whatever is between () to indicate its class
+        foundPos = textToPrint.indexOf(")", startPos);
+        dataClass = textToPrint.substring(startPos, foundPos);
+        startPos = foundPos+1;
+        // wrap all this in span tags
+        parsedText += "<span class=\""+ dataClass + "\">"+ dataName +"</span>";
+      }
+
+      parsedText += textToPrint.substring(startPos, textToPrint.length);
+
+      item.innerHTML = parsedText;
+      outputContainer.appendChild(item);
+
+      // adjust the top padding of the first item so the printed message gets aligned at the bottom:
+      if(!firstMessageDisplayed) {
+        firstMessageDisplayed = true;
+        // only set a padding if there is a height set in options
+        if(options.height!==undefined) {
+          item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
+        }
+      }
+
+      // scroll the item into view with an animation when there is an absolute height set in options
+      if(options.height!==undefined) {
+        window.clearInterval(timer);
+        timer = window.setInterval(animateScroll, timerInterval);
+      }
     }
   }
 
 
-  // Scrolls the text adventure window up to the latest message
+
+  /* 
+    Scrolls the text adventure window up to the latest message
+  */
   function animateScroll(){
     // scroll container up
     if(outputContainer.clientHeight >= (outputContainer.scrollHeight - outputContainer.scrollTop))
@@ -774,30 +975,56 @@ var TextAdventure = (function (){
   }
 
 
-  // public function to expose the container object
+
+  /* 
+    Public function to expose the container object
+  */
   function getContainer() {
     return container;
   }
 
-  // public function to expose the input field
+
+
+  /*
+    Public function to expose the input field
+  */
   function getInputField() {
     return inputField;
   }
 
 
-  // load typed command from list, c is either 1 for next command and -1 for previous
-  function showTypedCommand(c) {
+
+  /* 
+    Load typed command from list
+    ---
+    commandIndex   Either 1 for next command or -1 for previous
+  */
+  function showTypedCommand(commandIndex) {
+    // only do when there are commands that have been typed
     if(typedCommands.length!==0) {
-      typedCommandsIndex += c;
-      if(typedCommandsIndex<0) typedCommandsIndex = typedCommands.length-1;
-      if(typedCommandsIndex>=typedCommands.length) typedCommandsIndex=0;
-      if(options.debug) console.log("showing typed command, index: "+ typedCommandsIndex);
+      // increase the index
+      typedCommandsIndex += commandIndex;
+      // check for beginning of list, if so jump to last
+      if(typedCommandsIndex < 0) {
+        typedCommandsIndex = typedCommands.length-1;
+      }
+      // check if at end of list, if so jump to first 
+      if(typedCommandsIndex >= typedCommands.length) {
+        typedCommandsIndex = 0;
+      } 
+      debug("showing typed command, index: "+ typedCommandsIndex);
+      // show the command
       inputField.value = typedCommands[typedCommandsIndex];
     }
   }
 
 
-  // wraps information in a definition list which can then be outputted
+
+  /*
+    Wraps information in a definition list which can then be outputted
+    ---
+    list  a list of names and descriptions to convert to definition lists to display
+  */
   function buildDefinitionList(list) {
     var convertedList = "<dl>";
     for(var item in list) {
@@ -809,16 +1036,29 @@ var TextAdventure = (function (){
   }
 
 
+
+  /*
+    Public function to allow the extension to be added
+    ---
+    e   The extension object
+  */
   function addExtension(e) {
     extensions = e;
   }
 
-  // call debug to write out a line to console
-  function debug(m) {
-    if(options.debug===true) console.log(m);
+
+
+  /* 
+    Writes out a line to console if debug is turned on in the options
+    ---
+    m   message to write to console
+  */
+  function debug(message) {
+    if(options.debug===true) console.log(message);
   }
 
 
+  
   // expose the public functions in the return object
   return {
     init: init,
@@ -832,7 +1072,8 @@ var TextAdventure = (function (){
     printLine: printLine,
     getContainer: getContainer,
     getInputField: getInputField,
-    extend: addExtension
+    extend: addExtension,
+    restart: restart
   };
 
 })();
