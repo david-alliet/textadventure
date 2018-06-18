@@ -217,9 +217,9 @@ var TextAdventure = (function (){
 
     // check if the game is in prompt mode
     if(promptMode) {
-      debug("Game in prompt mode: checking command against active prompt choices"); 
+      debug("Game in prompt mode.")
+      debug("Checking input against valid prompt responses."); 
       // load up the current response
-      // TODO: find a way to do this without using eval!!
       var responseObj = {};
       var validResponseFound = false;
       var nextPromptToCheck = "";
@@ -233,7 +233,17 @@ var TextAdventure = (function (){
           // load up this response:
           responseObj = promptObj.responses[response];
           // compare input from player with valid commands in the response object, if match, execute this prompt
-          if(responseObj.valid_commands.toLowerCase().indexOf(command) !== -1) {
+          var found = false;
+          var i = 0;
+          // loop through possible inputs on this response: 
+          while(!found && i<responseObj.valid_commands.length) {
+            console.log(responseObj.valid_commands[i]);
+            if(command === responseObj.valid_commands[i]) {
+              found = true;
+            }
+            i++;
+          }
+          if(found) {
             debug("Proper response found");
             // command found: execute!
             printLine(responseObj.response_text);
@@ -241,6 +251,8 @@ var TextAdventure = (function (){
             promptMode = false;
             // indicate that this prompt has been shown in case it shouldn't be repeated
             eval(getCurrentPrompt()[0] + "." + getCurrentPrompt()[1]).has_prompted = true;
+            // indicate that this response has been chosen so we can check for it later 
+            eval(getCurrentPrompt()[0] + "." + getCurrentPrompt()[1]).responses[response].is_chosen = true;
             // check if this prompt should relocate the player to a new location
             if(responseObj.goto_location !== undefined && responseObj.goto_location !== "") {
               // when moving, reset all prompts
@@ -251,6 +263,7 @@ var TextAdventure = (function (){
             } else {
               // check for the next prompt
               nextPromptToCheck = getCurrentPrompt()[0] + "." + getCurrentPrompt()[1] +".responses."+response+".prompts";
+              prepareNextTurn(command, actionTaken);
               checkForPrompt(nextPromptToCheck); 
             }
           }
@@ -333,7 +346,20 @@ var TextAdventure = (function (){
 
     }
 
+    prepareNextTurn(command, actionTaken);
 
+  }
+
+
+
+  /* 
+    Some functionality to be executed after each typed commands: 
+    ---
+    command       the command that was typed (for saving in commands list)
+    actionTaken   boolean to indicate if the command resulted in an action
+  */
+  function prepareNextTurn(command, actionTaken) {
+    
     // tutorial messages:
     // increase message count and print out tutorial placeholders based on it
     tutorialMessageCount++;
@@ -671,7 +697,7 @@ var TextAdventure = (function (){
     if(eval(promptRef) === undefined) {
       debug("No pompt found");
       // no prompt found on this object, check follow-ups
-      debug("Checking previous prompts for for follow-up prompt")
+      debug("Checking for for follow-up prompts");
       // loop through the previous prompt-objects to see if there are other prompts to show
       while(currentPrompt.length > 0) {
         if(!checkForPrompt(getCurrentPrompt()[0])) {
@@ -686,15 +712,71 @@ var TextAdventure = (function (){
       var promptObj = eval(promptRef);      
       // loop through the prompts found here:
       for(var prompt in promptObj) {
-        if(!promptObj[prompt].has_prompted || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat)) {
-          // prompt found: 
+        // check for a condition to show this 
+        var conditionsMet = true;
+        if(promptObj[prompt].prompt_conditions !== undefined){
+          // there are conditions to show this prompt, check for proper responses: 
+          debug(prompt +" has conditions. Checking if they are met.");
+          var responseIDs = [];
+          var responseString = "";
+          var responseObj = {};
+          for(var i=0; i<promptObj[prompt].prompt_conditions.length; i++) {
+            /* 
+            Each condition in the conditions array is shaped up as "location.prompt_id.response_id".
+            prompt_id.response_id could be repeated several times for nested prompts.
+            Split the condition string into an array using the "." character 
+            Index 0 is always the location: locations.arrayIndexValue
+            Uneven array index becomes: .prompts.arrayIndexValue
+            Even array index becomes: .responses.arrayIndexValue
+            */
+            responseIDs = promptObj[prompt].prompt_conditions[i].split(".");
+            responseString = "locations."+ responseIDs[0];
+            // 2. loop through resulting array:
+            for(var j=1; j<responseIDs.length; j++) {
+              // 3. if uneven add .prompt., otherwise add .responses.
+              if(j%2 === 1) {
+                responseString += ".prompts." + responseIDs[j];
+              } else {
+                responseString += ".responses." + responseIDs[j];
+              }
+              // 
+            }
+            // ealuate the whole string into an object
+            responseObj = eval(responseString);
+            if(responseObj === undefined) {
+              // condition couldn't be found, probably an error in the game data:
+              debug("Condition "+ promptObj[prompt].prompt_conditions[i] +" could not be found. Verify your game data.");
+              conditionsMet = false;
+            } else if(responseObj.is_chosen !== undefined) {
+              // there is an is_chosen flag on this response
+              if(responseObj.is_chosen === false) {
+                // it's false (technically this should never happen!), so the response has not been triggered yet
+                conditionsMet = false;
+                debug("Condition "+ promptObj[prompt].prompt_conditions[i] + " not met");
+              } 
+            } else {
+              // there is no is_chosen flag, so the response has not been triggered yet
+              conditionsMet = false;
+              debug("Condition "+ promptObj[prompt].prompt_conditions[i] + " not met");
+            }
+          }
+        }
+        /*
+        check if all requirements for showing this prompt are met: 
+        1. the prompt hasn't been shown before, and all conditions for showing it are met
+        2. the prompt has been shown before, but can be repeated, and all conditions for showing it are met
+        */
+        if((!promptObj[prompt].has_prompted && conditionsMet) || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat && conditionsMet)) {
           debug("Showable prompt found: "+ prompt);
+          // set game to prompt-mode
           promptMode = true;
+          // add this prompt to the current prompt array for rechecking later
           currentPrompt.push([promptRef, prompt]);
+          // print the prompt
           printLine(promptObj[prompt].prompt_text);
           return true;
         } else {
-          debug("Prompt "+ prompt +" can't be repeated");
+          debug("Prompt "+ prompt +" can't be shown");
         }
       } 
 
@@ -1024,9 +1106,11 @@ var TextAdventure = (function (){
     else
       outputContainer.scrollTop+=2;
 
-    // todo :
-    // dynamically set the scroll amount based on how much text needs to be scrolled
-    // add smoothing?
+    /* 
+    todo :
+      - dynamically set the scroll amount based on how much text needs to be scrolled (to speed up scrolling of large amount of text)
+      - add smoothing?
+    */
   }
 
 
