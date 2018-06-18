@@ -81,7 +81,7 @@ var TextAdventure = (function (){
     victoryConditions = gameVictoryConditions;
 
     // assign the tutorial messages:
-    tutorialMessages = ["To play, type an instruction followed by RETURN.",
+    tutorialMessages = ["To play, type an instruction or command followed by the RETURN key.",
       "Have a look in your inventory to see what you are currently carrying.",
       "If you are stuck, examine your current location or an object for hints.",
       "Use the UP and DOWN arrow keys to view previously typed instructions."];
@@ -126,7 +126,7 @@ var TextAdventure = (function (){
     // print the current location text:
     printLine(locations[player.getLocation()].text_on_visit);
     // check if the location has a prompt
-    checkForPrompt(locations[player.getLocation()]);
+    checkForPrompt("locations." + player.getLocation() + ".prompts");
     // when a save has been loaded, it's good to check for victory on init.
     checkForVictory();
   }
@@ -222,32 +222,49 @@ var TextAdventure = (function (){
       // TODO: find a way to do this without using eval!!
       var responseObj = {};
       var validResponseFound = false;
-
-      for(var response in eval("locations[player.getLocation()]" + getCurrentPrompt()).responses ) {
+      var nextPromptToCheck = "";
+      // load up the current prompt:
+      var promptObj = eval(getCurrentPrompt()[0] + "." + getCurrentPrompt()[1]);
+      // loop through possible responses:
+      for(var response in promptObj.responses) {
         // only do this if a matching prompt answer hasn't already been found:
         if(!actionTaken) {
-          responseObj = eval("locations[player.getLocation()]" + getCurrentPrompt()).responses[response];
-
+          debug("Checking response: "+ response);
+          // load up this response:
+          responseObj = promptObj.responses[response];
           // compare input from player with valid commands in the response object, if match, execute this prompt
           if(responseObj.valid_commands.toLowerCase().indexOf(command) !== -1) {
+            debug("Proper response found");
             // command found: execute!
             printLine(responseObj.response_text);
             actionTaken = true;
+            promptMode = false;
             // indicate that this prompt has been shown in case it shouldn't be repeated
-            eval("locations[player.getLocation()]" + getCurrentPrompt()).has_prompted = true;
-            // check if there is another prompt associated on this object
-            if(!checkForPrompt(responseObj)) {
-              // no further prompts found, resume normal mode:
-              promptMode = false;
-              // check if the user should be redirect to another location:
-              if(responseObj.goto_location !== undefined && responseObj.goto_location !== "") {
-                moveToLocation(responseObj.goto_location);
-              }
+            eval(getCurrentPrompt()[0] + "." + getCurrentPrompt()[1]).has_prompted = true;
+            // check if this prompt should relocate the player to a new location
+            if(responseObj.goto_location !== undefined && responseObj.goto_location !== "") {
+              // when moving, reset all prompts
+              resetPrompts();
+              nextPromptToCheck = "";
+              // and move
+              moveToLocation(responseObj.goto_location);
+            } else {
+              // check for the next prompt
+              nextPromptToCheck = getCurrentPrompt()[0] + "." + getCurrentPrompt()[1] +".responses."+response+".prompts";
+              checkForPrompt(nextPromptToCheck); 
             }
-
           }
         }
-      }   
+      }
+      
+      if(!actionTaken) {
+        // the command didn't trigger a valid response
+        printLine("This wasn't a valid response.", "error");
+      } else {
+        // check for further prompts:
+      }
+
+
 
     } else {
       // not in prompt mode: continuing in regular mode
@@ -355,14 +372,23 @@ var TextAdventure = (function (){
   function validateMoveDirection(d){
     debug("Testing direction "+ d +" for validity");
     var valid = false;
-    var dirObj, dirId;
+    var dirObj, dirId, locationId, locationName;
     var l = "";
+    // check all possible directions in the current location
     for(var direction in locations[player.getLocation()].directions) {
-      //valid = true;
       if(direction===d) {
         valid = true;
         dirId = direction;
         dirObj = locations[player.getLocation()].directions[direction];
+      } else {
+        // if no match, check if player has entered the actual name of the location instead
+        locationId = locations[player.getLocation()].directions[direction].location;
+        locationName = locations[locationId].name;
+        if(locationName.toLowerCase() === d) {
+          valid = true;
+          dirId = direction;
+          dirObj = locations[player.getLocation()].directions[direction];
+        }
       }
     }
     // move:
@@ -372,7 +398,7 @@ var TextAdventure = (function (){
         printLine(locations[player.getLocation()].directions[dirId].text_on_error, "error");
         return false;
       } else {
-        moveToLocation(locations[player.getLocation()].directions[d].location);
+        moveToLocation(locations[player.getLocation()].directions[dirId].location);
         return true;
       }
     } else {
@@ -397,7 +423,7 @@ var TextAdventure = (function (){
     // check for a trigger
     trigger(locations[player.getLocation()], "visit_trigger");
     // check for prompt on new location: 
-    checkForPrompt(locations[player.getLocation()]);
+    checkForPrompt("locations[player.getLocation()].prompts");
   }
 
 
@@ -637,30 +663,43 @@ var TextAdventure = (function (){
   /*
     Check for prompt: shows prompt is available
     ---
-    obj   The object to check for prompts
+    promptRef   reference to the prompt to be checked
   */
-  function checkForPrompt(obj) {
+  function checkForPrompt(promptRef) {
     // check if player location has a prompt:
     debug("***** PROMPTS *****");
-    if(obj.prompts === undefined) {
+    if(eval(promptRef) === undefined) {
       debug("No pompt found");
-      return false;
-    }
-    var prompt = obj.prompts[Object.keys(obj.prompts)[0]];
-    if(prompt !== undefined) {
-      // a prompt has been found!
-      debug("Prompt found");
-      // check if this has prompted before or if it can be repeated
-      if(!prompt.has_prompted || (prompt.has_prompted && prompt.can_repeat) )  {
-        debug("Prompt can be shown");
-        promptMode = true;
-        currentPrompt.push(Object.keys(locations[player.getLocation()].prompts)[0]);
-        debug("Current prompt: "+ currentPrompt);
-        printLine(prompt.prompt_text);
-      } else {
-        debug("Prompt can't be shown");
-        return false;
+      // no prompt found on this object, check follow-ups
+      debug("Checking previous prompts for for follow-up prompt")
+      // loop through the previous prompt-objects to see if there are other prompts to show
+      while(currentPrompt.length > 0) {
+        if(!checkForPrompt(getCurrentPrompt()[0])) {
+          removeLastPrompt();
+        } else {
+          return true;
+        }
       }
+
+    } else {
+      // load up this prompt
+      var promptObj = eval(promptRef);      
+      // loop through the prompts found here:
+      for(var prompt in promptObj) {
+        if(!promptObj[prompt].has_prompted || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat)) {
+          // prompt found: 
+          debug("Showable prompt found: "+ prompt);
+          promptMode = true;
+          currentPrompt.push([promptRef, prompt]);
+          printLine(promptObj[prompt].prompt_text);
+          return true;
+        } else {
+          debug("Prompt "+ prompt +" can't be repeated");
+        }
+      } 
+
+
+      return false;
     }
   }
 
@@ -670,13 +709,26 @@ var TextAdventure = (function (){
     Looks at the current prompt array and retrieves the object based on it
   */
   function getCurrentPrompt() {
-    var currentPromptRef = "";
-    for(var i=0; i<currentPrompt.length; i++) {
-      currentPromptRef += ".prompts."+ currentPrompt[i];
-    }
-    return currentPromptRef;
+    return currentPrompt[currentPrompt.length-1];
   }
 
+
+
+  /* 
+    Removes the last prompt from the currenprompts array
+  */
+  function removeLastPrompt() {
+    currentPrompt.pop();
+  }
+
+
+
+  /* 
+    clears all prompts
+  */
+ function resetPrompts() {
+  currentPrompt = [];
+}
 
 
   /* 
