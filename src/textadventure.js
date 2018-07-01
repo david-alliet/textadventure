@@ -237,7 +237,6 @@ var TextAdventure = (function (){
           var i = 0;
           // loop through possible inputs on this response: 
           while(!found && i<responseObj.valid_commands.length) {
-            console.log(responseObj.valid_commands[i]);
             if(command === responseObj.valid_commands[i]) {
               found = true;
             }
@@ -702,6 +701,7 @@ var TextAdventure = (function (){
       while(currentPrompt.length > 0) {
         if(!checkForPrompt(getCurrentPrompt()[0])) {
           removeLastPrompt();
+          return false;
         } else {
           return true;
         }
@@ -709,78 +709,90 @@ var TextAdventure = (function (){
 
     } else {
       // load up this prompt
-      var promptObj = eval(promptRef);      
+      var promptObj = eval(promptRef);
       // loop through the prompts found here:
       for(var prompt in promptObj) {
-        // check for a condition to show this 
-        var conditionsMet = true;
-        if(promptObj[prompt].prompt_conditions !== undefined){
-          // there are conditions to show this prompt, check for proper responses: 
-          debug(prompt +" has conditions. Checking if they are met.");
-          var responseIDs = [];
-          var responseString = "";
-          var responseObj = {};
-          for(var i=0; i<promptObj[prompt].prompt_conditions.length; i++) {
-            /* 
-            Each condition in the conditions array is shaped up as "location.prompt_id.response_id".
-            prompt_id.response_id could be repeated several times for nested prompts.
-            Split the condition string into an array using the "." character 
-            Index 0 is always the location: locations.arrayIndexValue
-            Uneven array index becomes: .prompts.arrayIndexValue
-            Even array index becomes: .responses.arrayIndexValue
-            */
-            responseIDs = promptObj[prompt].prompt_conditions[i].split(".");
-            responseString = "locations."+ responseIDs[0];
-            // 2. loop through resulting array:
-            for(var j=1; j<responseIDs.length; j++) {
-              // 3. if uneven add .prompt., otherwise add .responses.
-              if(j%2 === 1) {
-                responseString += ".prompts." + responseIDs[j];
-              } else {
-                responseString += ".responses." + responseIDs[j];
+        // check if there's a previous prompt
+        var promptCheck = "";
+        if(getCurrentPrompt().length > 0) {
+          promptCheck = getCurrentPrompt()[1];
+        } 
+          // check if this prompt matches the previous one (if so, don't do anything)
+          if(prompt === promptCheck) {
+            debug(prompt + "has just been shown.");
+          } else {     
+            var conditionsMet = true; 
+            // check for a condition to show this
+            if(promptObj[prompt].prompt_conditions !== undefined) {
+              // there are conditions to show this prompt, check for proper responses: 
+              debug(prompt +" has conditions. Checking if they are met.");
+              var responseIDs = [];
+              var responseString = "";
+              var responseObj = {};
+              for(var i=0; i<promptObj[prompt].prompt_conditions.length; i++) {
+                /* 
+                Each condition in the conditions array is shaped up as "location.prompt_id.response_id".
+                prompt_id.response_id could be repeated several times for nested prompts.
+                Split the condition string into an array using the "." character 
+                Index 0 is always the location: locations.arrayIndexValue
+                Uneven array index becomes: .prompts.arrayIndexValue
+                Even array index becomes: .responses.arrayIndexValue
+                */
+                responseIDs = promptObj[prompt].prompt_conditions[i].split(".");
+                responseString = "locations."+ responseIDs[0];
+                // 2. loop through resulting array:
+                for(var j=1; j<responseIDs.length; j++) {
+                  // 3. if uneven add .prompt., otherwise add .responses.
+                  if(j%2 === 1) {
+                    responseString += ".prompts." + responseIDs[j];
+                  } else {
+                    responseString += ".responses." + responseIDs[j];
+                  }
+                  // 
+                }
+                // ealuate the whole string into an object
+                responseObj = eval(responseString);
+                if(responseObj === undefined) {
+                  // condition couldn't be found, probably an error in the game data:
+                  debug("Condition "+ promptObj[prompt].prompt_conditions[i] +" could not be found. Verify your game data.");
+                  conditionsMet = false;
+                } else if(responseObj.is_chosen !== undefined) {
+                  // there is an is_chosen flag on this response
+                  if(responseObj.is_chosen === false) {
+                    // it's false (technically this should never happen!), so the response has not been triggered yet
+                    conditionsMet = false;
+                    debug("Condition "+ promptObj[prompt].prompt_conditions[i] + " not met");
+                  } 
+                } else {
+                  // there is no is_chosen flag, so the response has not been triggered yet
+                  conditionsMet = false;
+                  debug("Condition "+ promptObj[prompt].prompt_conditions[i] + " not met");
+                }
+
+                
               }
-              // 
             }
-            // ealuate the whole string into an object
-            responseObj = eval(responseString);
-            if(responseObj === undefined) {
-              // condition couldn't be found, probably an error in the game data:
-              debug("Condition "+ promptObj[prompt].prompt_conditions[i] +" could not be found. Verify your game data.");
-              conditionsMet = false;
-            } else if(responseObj.is_chosen !== undefined) {
-              // there is an is_chosen flag on this response
-              if(responseObj.is_chosen === false) {
-                // it's false (technically this should never happen!), so the response has not been triggered yet
-                conditionsMet = false;
-                debug("Condition "+ promptObj[prompt].prompt_conditions[i] + " not met");
-              } 
-            } else {
-              // there is no is_chosen flag, so the response has not been triggered yet
-              conditionsMet = false;
-              debug("Condition "+ promptObj[prompt].prompt_conditions[i] + " not met");
-            }
+
+            /*
+            check if all requirements for showing this prompt are met: 
+            1. the prompt hasn't been shown before, and all conditions for showing it are met
+            2. the prompt has been shown before, but can be repeated, and all conditions for showing it are met
+            */
+            if((!promptObj[prompt].has_prompted && conditionsMet) || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat && conditionsMet)) {
+            debug("Showable prompt found: "+ prompt);
+            // set game to prompt-mode
+            promptMode = true;
+            // add this prompt to the current prompt array for rechecking later
+            currentPrompt.push([promptRef, prompt]);
+            // print the prompt
+            printLine(promptObj[prompt].prompt_text);
+            return true;
+          } else {
+            debug("Prompt "+ prompt +" can't be shown");
           }
-        }
-        /*
-        check if all requirements for showing this prompt are met: 
-        1. the prompt hasn't been shown before, and all conditions for showing it are met
-        2. the prompt has been shown before, but can be repeated, and all conditions for showing it are met
-        */
-        if((!promptObj[prompt].has_prompted && conditionsMet) || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat && conditionsMet)) {
-          debug("Showable prompt found: "+ prompt);
-          // set game to prompt-mode
-          promptMode = true;
-          // add this prompt to the current prompt array for rechecking later
-          currentPrompt.push([promptRef, prompt]);
-          // print the prompt
-          printLine(promptObj[prompt].prompt_text);
-          return true;
-        } else {
-          debug("Prompt "+ prompt +" can't be shown");
-        }
+        }  
       } 
-
-
+      
       return false;
     }
   }
@@ -791,7 +803,11 @@ var TextAdventure = (function (){
     Looks at the current prompt array and retrieves the object based on it
   */
   function getCurrentPrompt() {
-    return currentPrompt[currentPrompt.length-1];
+    if(currentPrompt.length === 0) {
+      return [];
+    } else {
+      return currentPrompt[currentPrompt.length-1];
+    }
   }
 
 
