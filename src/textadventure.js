@@ -6,16 +6,18 @@ var TextAdventure = (function (){
   var newStartingInventory = {};  // copy of initial starting inventory to use when restarting
   var victoryConditions = {};
   var options;
-  var player;
+  var playerObject;
   var extensions;
   
   // game essential variables
   var usedObjects = [];   // Stores list of used objects so victory conditions can be checked
   var promptMode = false; // sets the game in prompt mode when needed
   var currentPrompt = []; // references to the current prompt (prompts can be nested)
+  var gameVictory = false;
 
   // UI elements
   var container;
+  var containername;
   var outputContainer;
   var inputField;
   var tutorialMessages = [];
@@ -41,7 +43,6 @@ var TextAdventure = (function (){
   */
   function init(containerId, gameOptions, locationsData, gameVictoryConditions, startingInventory) {
 
-    
     // story copy of locations and inventory data so game can be reset
     newGameLocations = locationsData;
     newStartingInventory = startingInventory;
@@ -55,6 +56,7 @@ var TextAdventure = (function (){
     debug("***** LOADING GAME *****");
     debug("Initializing text adventure");
 
+    containername = containerId;
     container = document.getElementById(containerId);
 
     // detect local storage capabilities
@@ -81,26 +83,33 @@ var TextAdventure = (function (){
     victoryConditions = gameVictoryConditions;
 
     // assign the tutorial messages:
-    tutorialMessages = ["To play, type an instruction or command followed by the RETURN key.",
-      "Have a look in your inventory to see what you are currently carrying.",
-      "If you are stuck, examine your current location or an object for hints.",
-      "Use the UP and DOWN arrow keys to view previously typed instructions."];
+    if(options.tutorial_messages !== undefined) {
+      tutorialMessages = options.tutorial_messages;
+    } else {
+      tutorialMessages = ["To play, type an instruction or command followed by the RETURN key.",
+        "Have a look in your inventory to see what you are currently carrying.",
+        "If you are stuck, examine your current location or an object for hints.",
+        "Use the UP and DOWN arrow keys to view previously typed instructions."];
+    }
+    tutorialMessageCount = 0;
 
     // prepare the TA container with the neccesary game elements
+    firstMessageDisplayed = false;
     prepareContainer();
 
     // set up the player object
-    player = Object.create(Player);
+    playerObject = Object.create(Player);
 
     // check for existing saves:
     if(canStore && storage.getItem("TA_CURRENTLOCATION")!==null) {
       debug("Local save found, resuming save.");
+      printLine("... Resuming game from previous save", "info");
       // save found, loading in saved locations object
       locations = storage.getObject("TA_LOCATIONS");
       // Initialize player with saved inventory
-      player.init(storage.getObject("TA_INVENTORY"));
+      playerObject.init(storage.getObject("TA_INVENTORY"));
       // set current location based on save:
-      player.setLocation(storage.getItem("TA_CURRENTLOCATION"));
+      playerObject.setLocation(storage.getItem("TA_CURRENTLOCATION"));
 
       // fill up the used objects array with all objects in the game that are flagged as used:
       for(var location in locations) {
@@ -118,17 +127,23 @@ var TextAdventure = (function (){
       locations = locationsData;
 
       // Initialize player with starting inventory
-      player.init(startingInventory);
+      playerObject.init(startingInventory);
       // set current location to starting location
-      player.setLocation(locations.startlocation);
+      playerObject.setLocation(locations.startlocation);
     }
 
-    // print the current location text:
-    printLine(locations[player.getLocation()].text_on_visit);
-    // check if the location has a prompt
-    checkForPrompt("locations." + player.getLocation() + ".prompts");
     // when a save has been loaded, it's good to check for victory on init.
     checkForVictory();
+    if(!gameVictory) {
+      // print the current location text:
+      printLine(locations[playerObject.getLocation()].text_on_visit);
+      // mark this location as visited (although it might already be)
+      locations[playerObject.getLocation()].visited = true;
+      // clear all prompts (fix for bug when closing and reopening game)
+      currentPrompt = [];
+    // check if the location has a prompt
+      checkForPrompt("locations." + playerObject.getLocation() + ".prompts");
+    }
   }
 
 
@@ -188,15 +203,21 @@ var TextAdventure = (function (){
     // append container for input to dom
     container.appendChild(inputContainer);
 
+    // set height of the text adventure container and its elements
     // check if a height was passed as option
     if(options.height!==undefined) {
-      // set height of the text adventure container and its elements
       container.style.height = options.height+"px";
       outputContainer.style.height = (options.height - inputContainer.clientHeight)+"px";
     }
 
+    // display title and description
+    printLine("<h2>"+ options.title +"</h2>", "title");
+    printLine(options.description, "description");
+
     // display the help information as initial message
-    displayHelp();
+    if(options.show_help) {
+      displayHelp();
+    }
   }
 
 
@@ -248,10 +269,18 @@ var TextAdventure = (function (){
             printLine(responseObj.response_text);
             actionTaken = true;
             promptMode = false;
+            // response trigger: 
+            trigger(responseObj, "response_trigger");
             // indicate that this prompt has been shown in case it shouldn't be repeated
             eval(getCurrentPrompt()[0] + "." + getCurrentPrompt()[1]).has_prompted = true;
             // indicate that this response has been chosen so we can check for it later 
             eval(getCurrentPrompt()[0] + "." + getCurrentPrompt()[1]).responses[response].is_chosen = true;
+            // check if this response should give the player an object:
+            if(responseObj.receive_object !== undefined && responseObj.receive_object !== "") {
+              debug("Receiving object "+ responseObj.receive_object);
+              playerObject.addItemToInventory(responseObj.receive_object, locations[playerObject.getLocation()].objects[responseObj.receive_object]);
+              printLine(locations[playerObject.getLocation()].objects[responseObj.receive_object].text_on_pickup);
+            }
             // check if this prompt should relocate the player to a new location
             if(responseObj.goto_location !== undefined && responseObj.goto_location !== "") {
               // when moving, reset all prompts
@@ -262,8 +291,8 @@ var TextAdventure = (function (){
             } else {
               // check for the next prompt
               nextPromptToCheck = getCurrentPrompt()[0] + "." + getCurrentPrompt()[1] +".responses."+response+".prompts";
-              prepareNextTurn(command, actionTaken);
               checkForPrompt(nextPromptToCheck); 
+              prepareNextTurn(command, actionTaken);
             }
           }
         }
@@ -293,7 +322,7 @@ var TextAdventure = (function (){
 
       } else if(command === "look around") {
         // display location description
-        printLine(locations[player.getLocation()].description);
+        printLine(locations[playerObject.getLocation()].description);
 
       } else if(command.search(/^(pick up|take|grab)\s/) !== -1) {
         // pick up command
@@ -380,6 +409,7 @@ var TextAdventure = (function (){
         saveProgress();
       }
       debug("Actionable turn, checking for victory");
+      // only check for victory when there isn't an active prompt...
       checkForVictory();
     } else {
       debug("Not an actionable turn, no need to save or check for victory");
@@ -400,19 +430,19 @@ var TextAdventure = (function (){
     var dirObj, dirId, locationId, locationName;
     var l = "";
     // check all possible directions in the current location
-    for(var direction in locations[player.getLocation()].directions) {
+    for(var direction in locations[playerObject.getLocation()].directions) {
       if(direction===d) {
         valid = true;
         dirId = direction;
-        dirObj = locations[player.getLocation()].directions[direction];
+        dirObj = locations[playerObject.getLocation()].directions[direction];
       } else {
         // if no match, check if player has entered the actual name of the location instead
-        locationId = locations[player.getLocation()].directions[direction].location;
+        locationId = locations[playerObject.getLocation()].directions[direction].location;
         locationName = locations[locationId].name;
         if(locationName.toLowerCase() === d) {
           valid = true;
           dirId = direction;
-          dirObj = locations[player.getLocation()].directions[direction];
+          dirObj = locations[playerObject.getLocation()].directions[direction];
         }
       }
     }
@@ -420,10 +450,10 @@ var TextAdventure = (function (){
     if(valid) {
       if(!resolvedDependency(dirId)) {
         debug("Access to this location is blocked");
-        printLine(locations[player.getLocation()].directions[dirId].text_on_error, "error");
+        printLine(locations[playerObject.getLocation()].directions[dirId].text_on_error, "error");
         return false;
       } else {
-        moveToLocation(locations[player.getLocation()].directions[dirId].location);
+        moveToLocation(locations[playerObject.getLocation()].directions[dirId].location);
         return true;
       }
     } else {
@@ -442,13 +472,15 @@ var TextAdventure = (function (){
   function moveToLocation(newLocation) {
     debug("Moving to location "+ newLocation);
     // set the new location for the player
-    player.setLocation(newLocation);
+    playerObject.setLocation(newLocation);
     // print the entry text
-    printLine(locations[player.getLocation()].text_on_visit);
+    printLine(locations[playerObject.getLocation()].text_on_visit);
     // check for a trigger
-    trigger(locations[player.getLocation()], "visit_trigger");
+    trigger(locations[playerObject.getLocation()], "visit_trigger");
+    // mark this location as visited
+    locations[playerObject.getLocation()].visited = true;
     // check for prompt on new location: 
-    checkForPrompt("locations[player.getLocation()].prompts");
+    checkForPrompt("locations." + playerObject.getLocation() + ".prompts");
   }
 
 
@@ -490,9 +522,9 @@ var TextAdventure = (function (){
               // object can be used on second object
               debug(o + " and " + ou + "can be used together.");
               printLine(obj.text_on_use_object_on);
-              locations[player.getLocation()].objects[objOnUseId].is_used = true;
+              locations[playerObject.getLocation()].objects[objOnUseId].is_used = true;
               if(obj.remove_after_use) {
-                player.deleteItemFromInventory(objId);
+                playerObject.deleteItemFromInventory(objId);
               }
               // keep track of used objects (by id) in an array
               usedObjects.push(objId);
@@ -530,9 +562,9 @@ var TextAdventure = (function (){
             // dependency resolved, object can be used
             // use object and see if it needs to be removed
             printLine(obj.text_on_use);
-            locations[player.getLocation()].objects[objId].is_used = true;
+            locations[playerObject.getLocation()].objects[objId].is_used = true;
             if(obj.remove_after_use) {
-              player.deleteItemFromInventory(objId);
+              playerObject.deleteItemFromInventory(objId);
             }
             // keep track of used objects (by id) in an array
             usedObjects.push(objId);
@@ -617,9 +649,9 @@ var TextAdventure = (function (){
         } else {
           // can definitely be picked up:
           // add to inventory
-          player.addItemToInventory(objectID, obj);
+          playerObject.addItemToInventory(objectID, obj);
           // indicate the object is picked up
-          locations[player.getLocation()].objects[objectID].picked_up = true;
+          locations[playerObject.getLocation()].objects[objectID].picked_up = true;
           // output message
           printLine("You put the "+ obj.name +" in your inventory");
           trigger(obj, "pickup_trigger");
@@ -643,40 +675,115 @@ var TextAdventure = (function (){
   */
   function checkForVictory() {
     var objId = "";
-    var foundObj = false;
     // check for location:
-
+    
     debug("***** VICTORY CONDITIONS CHECK *****");
-
-    if(victoryConditions.conditions.in_location==="" || victoryConditions.conditions.in_location===player.getLocation()) {
+    
+    if(victoryConditions.conditions.in_location==="" || victoryConditions.conditions.in_location===playerObject.getLocation()) {
       // check for picked up objects
       for (var i=0; i<victoryConditions.conditions.have_objects.length; i++) {
         objId = victoryConditions.conditions.have_objects[i];
-        if(!player.inInventory(objId)) {
+        if(!playerObject.inInventory(objId)) {
           debug("Victory conditions not met: have object "+ objId);
           return false;
         }
-
-        // check for used objects
-        for(i=0; i<victoryConditions.conditions.used_objects.length; i++) {
-          // loop through used objects list:
-          objId = victoryConditions.conditions.used_objects[i];
-          for(var j=0; j<usedObjects.length; j++) {
-            if(objId===usedObjects[j]) {
-              foundObj = true;
-            }
-          }
-
-          if(!foundObj) {
-            debug("Victory conditions not met: used object "+ objId);
-            return false;
+      }
+      
+      var foundObj = false;
+      // check for used objects
+      for(i=0; i<victoryConditions.conditions.used_objects.length; i++) {
+        // loop through used objects list:
+        objId = victoryConditions.conditions.used_objects[i];
+        for(var j=0; j<usedObjects.length; j++) {
+          if(objId===usedObjects[j]) {
+            foundObj = true;
           }
         }
-
-        // all checks have passed without exiting the fucntion: VICTORY!
-        printLine(victoryConditions.victory_text, "victory");
-        inputField.disabled = true;
+        
+        if(!foundObj) {
+          debug("Victory conditions not met: used object "+ objId);
+          return false;
+        }
       }
+
+      var loc = "";
+      var locVisited = false;
+      // check for visited locations: 
+      for(i=0; i<victoryConditions.conditions.visited_locations.length; i++) {
+        // get the name of this location
+        loc = victoryConditions.conditions.visited_locations[i];
+        // see if visited flag is set for this location:
+        if(locations[loc].visited !== undefined) {
+          if(locations[loc].visited !== true) {
+            debug("Victory conditions not me: location "+ loc +" not visited");
+            return false;
+          }
+        } else {
+          debug("Victory conditions not me: location "+ loc +" not visited");
+          return false;
+        }
+      }
+
+      // check for responses:
+      // are there any set?
+      var promptConditionsMet = true; 
+      if(victoryConditions.conditions.has_responded.length > 0) {
+        // there are responses to check:   
+        var responseIDs = [];
+        var responseString = "";
+        var responseObj = {};
+        for(i=0; i<victoryConditions.conditions.has_responded.length; i++) {
+          /* 
+          Each condition in the conditions array is shaped up as "location.prompt_id.response_id".
+          prompt_id.response_id could be repeated several times for nested prompts.
+          Split the condition string into an array using the "." character 
+          Index 0 is always the location: locations.arrayIndexValue
+          Uneven array index becomes: .prompts.arrayIndexValue
+          Even array index becomes: .responses.arrayIndexValue
+          */
+          responseIDs = victoryConditions.conditions.has_responded[i].split(".");
+          responseString = "locations."+ responseIDs[0];
+          // 2. loop through resulting array:
+          for(var j=1; j<responseIDs.length; j++) {
+            // 3. if uneven add .prompt., otherwise add .responses.
+            if(j%2 === 1) {
+              responseString += ".prompts." + responseIDs[j];
+            } else {
+              responseString += ".responses." + responseIDs[j];
+            }
+            // 
+          }
+          // ealuate the whole string into an object
+          responseObj = eval(responseString);
+          if(responseObj === undefined) {
+            // condition couldn't be found, probably an error in the game data:
+            debug("Condition "+ victoryConditions.conditions.has_responded[i] +" could not be found. Verify your game data.");
+            return false;
+          } else if(responseObj.is_chosen !== undefined) {
+            // there is an is_chosen flag on this response
+            if(responseObj.is_chosen === false) {
+              // it's false (technically this should never happen!), so the response has not been triggered yet
+              debug("Condition "+ victoryConditions.conditions.has_responded[i] + " not met");
+              return false;
+            } 
+          } else {
+            // there is no is_chosen flag, so the response has not been triggered yet
+            debug("Condition "+ victoryConditions.conditions.has_responded[i] + " not met");
+            return false;
+          }
+
+          
+        }
+      }
+
+      // all checks have passed without exiting the fucntion: VICTORY!
+      printLine(victoryConditions.victory_text, "victory");
+      inputField.disabled = true;
+      gameVictory = true;
+
+      // check for the victory trigger: 
+      trigger(victoryConditions, "victory_trigger");
+
     } else {
       debug("Victory conditions not met: in location "+ victoryConditions.conditions.in_location);
       return false;
@@ -719,7 +826,7 @@ var TextAdventure = (function (){
         } 
           // check if this prompt matches the previous one (if so, don't do anything)
           if(prompt === promptCheck) {
-            debug(prompt + "has just been shown.");
+            debug(prompt + " has just been shown.");
           } else {     
             var conditionsMet = true; 
             // check for a condition to show this
@@ -778,21 +885,25 @@ var TextAdventure = (function (){
             1. the prompt hasn't been shown before, and all conditions for showing it are met
             2. the prompt has been shown before, but can be repeated, and all conditions for showing it are met
             */
-            if((!promptObj[prompt].has_prompted && conditionsMet) || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat && conditionsMet)) {
+          if((!promptObj[prompt].has_prompted && conditionsMet) || (promptObj[prompt].has_prompted && promptObj[prompt].can_repeat && conditionsMet)) {
             debug("Showable prompt found: "+ prompt);
             // set game to prompt-mode
             promptMode = true;
             // add this prompt to the current prompt array for rechecking later
             currentPrompt.push([promptRef, prompt]);
             // print the prompt
-            printLine(promptObj[prompt].prompt_text);
+            printLine(promptObj[prompt].prompt_text, "prompt");
             return true;
           } else {
             debug("Prompt "+ prompt +" can't be shown");
           }
+
+
         }  
       } 
       
+
+
       return false;
     }
   }
@@ -838,15 +949,15 @@ var TextAdventure = (function (){
   */
   function isObjectAvailable(o) {
     var objectId = "";
-    if(player.inInventory(o)) {
+    if(playerObject.inInventory(o)) {
       debug(o +" found in inventory.");
-      objectId = player.getItemIDFromInventory(o);
-      return [objectId, player.getItemFromInventory(objectId)];
+      objectId = playerObject.getItemIDFromInventory(o);
+      return [objectId, playerObject.getItemFromInventory(objectId)];
     } else {
-      for(objectId in locations[player.getLocation()].objects) {
-        if(objectId === o || locations[player.getLocation()].objects[objectId].name.toLowerCase() === o) {
+      for(objectId in locations[playerObject.getLocation()].objects) {
+        if(objectId === o || locations[playerObject.getLocation()].objects[objectId].name.toLowerCase() === o) {
           debug(o +" found in location.");
-          return [objectId, locations[player.getLocation()].objects[objectId]];
+          return [objectId, locations[playerObject.getLocation()].objects[objectId]];
         }
       }
     }
@@ -864,7 +975,7 @@ var TextAdventure = (function (){
     NOTE: could possibly be done in the isObjectAvailable function
   */
   function findObjectInLocation(o) {
-    for(var object in locations[player.getLocation()].objects) {
+    for(var object in locations[playerObject.getLocation()].objects) {
       if(locations[l].objects[object].name===o) {
         return object;
       }
@@ -896,7 +1007,7 @@ var TextAdventure = (function (){
       if(obj.depends_on!=="") {
         // there is!
         // get the object to check if it has been used
-        objDep = locations[player.getLocation()].objects[obj.depends_on];
+        objDep = locations[playerObject.getLocation()].objects[obj.depends_on];
         if(objDep.is_used) {
           debug("Has dependency, is resolved.");
           return true;
@@ -910,10 +1021,10 @@ var TextAdventure = (function (){
       }
     } else {
       // the query is a direction
-      if(locations[player.getLocation()].directions[oId].depends_on!=="") {
+      if(locations[playerObject.getLocation()].directions[oId].depends_on!=="") {
         // there is a dependency!
         // get the object to check if it has been used
-        oD = locations[player.getLocation()].objects[locations[player.getLocation()].directions[oId].depends_on];
+        oD = locations[playerObject.getLocation()].objects[locations[playerObject.getLocation()].directions[oId].depends_on];
         if(oD.is_used) {
           debug("Has dependency, is resolved.");
           return true;
@@ -936,8 +1047,8 @@ var TextAdventure = (function (){
   function saveProgress(){
     if(canStore) {
       storage.setObject("TA_LOCATIONS", locations);
-      storage.setObject("TA_INVENTORY", player.getInventory());
-      storage.setItem("TA_CURRENTLOCATION", player.getLocation());
+      storage.setObject("TA_INVENTORY", playerObject.getInventory());
+      storage.setItem("TA_CURRENTLOCATION", playerObject.getLocation());
     }
   }
 
@@ -950,6 +1061,7 @@ var TextAdventure = (function (){
     // reset some important variables
     usedObjects = [];  
     promptMode = false;
+    gameVictory = false;
     currentPrompt = [];
     firstMessageDisplayed = false;
     typedCommands = [];
@@ -962,18 +1074,14 @@ var TextAdventure = (function (){
       storage.removeItem("TA_CURRENTLOCATION");
     }
 
-    // recreate the player object
-    player = null;
-    player = Object.create(Player);
-    player.init(newStartingInventory);
-    
-    // reset location to starting point
-    locations = newGameLocations;
-    player.setLocation(locations.startlocation);
-    
-    // go:
-    moveToLocation(player.getLocation());
-    checkForVictory();  
+    // delete used objects:
+    delete player;
+    player = "";
+    delete locations;
+    locations = "";
+
+    // restart
+    init(containername, options, newGameLocations, victoryConditions, newStartingInventory);
   }
 
 
@@ -999,9 +1107,7 @@ var TextAdventure = (function (){
   */
   function displayHelp() {
     debug("Displaying help");
-    var helpText = "<h2>Welcome to "+options.title+"</h2>";
-    helpText += "<p>"+ options.description +"</p>";
-    helpText += "<p>Explore all locations, collect items and solve puzzles to beat the game. Here is a list of instructions you can use to get started:</p>";
+    var helpText = "<p>Explore all locations, collect items and solve puzzles to beat the game. Here is a list of instructions you can use to get started:</p>";
     var commandlist = {
       "help": {
         description: "Displays this information"
@@ -1037,7 +1143,7 @@ var TextAdventure = (function (){
   function displayInventory() {
     debug("Displaying the inventory");
     var inventoryText = "<h2>Inventory</h2>";
-    inventoryText += buildDefinitionList(player.getInventory());
+    inventoryText += buildDefinitionList(playerObject.getInventory());
     printLine(inventoryText, "inventory");
   }
 
@@ -1051,7 +1157,7 @@ var TextAdventure = (function (){
   */
   function printLine(textToPrint, classToPrint) {
     // only do this if there is text to print (sometimes there might not be a text) 
-    if(textToPrint!=="") {
+    if(textToPrint !== undefined && textToPrint !== "") {
       // create new div 
       var item = document.createElement("div");
       // add item class
@@ -1097,16 +1203,12 @@ var TextAdventure = (function (){
       if(!firstMessageDisplayed) {
         firstMessageDisplayed = true;
         // only set a padding if there is a height set in options
-        if(options.height!==undefined) {
-          item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
-        }
+        item.style.paddingTop = (outputContainer.clientHeight - item.clientHeight)+"px";
       }
 
       // scroll the item into view with an animation when there is an absolute height set in options
-      if(options.height!==undefined) {
-        window.clearInterval(timer);
-        timer = window.setInterval(animateScroll, timerInterval);
-      }
+      window.clearInterval(timer);
+      timer = window.setInterval(animateScroll, timerInterval);
     }
   }
 
