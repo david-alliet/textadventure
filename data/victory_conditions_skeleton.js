@@ -1,8 +1,10 @@
 var victory_conditions = {
   conditions: {
-    used_objects: ["object_id_1", "object_id_2"],
-    in_location: "location_id",
-    have_objects: ["object_id_3", "object_id_4"]
+    used_objects: ["objectid1", "objectid2"],
+    in_location: "locationid1",
+    have_objects: ["objectid3", "objectid4"],
+    visited_locations: ["locationid2", "locationid3"],
+    has_responded: ["locationid.promptid.responseid", "locationid2.promptid.responseid"]
   },
-  victory_text: "Victorious!"
+  victory_text: "Text shown when all victory conditions are met.",
 };

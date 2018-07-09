@@ -1,13 +1,15 @@
-// this is how the adventure game can respond with custom bits of code to extend interactivity.
+/* 
+  This is an example Extension object which can be passed to the Text Adventure engine. 
+  The extension object should contain publically exposed functions which you can call from your game data using triggers.
+  See the README document for more information.
+*/
 var TAExtension = (function () {
-
   t = "";
 
   function hello(n) {
     console.log("Hello " + n +"!");
   }
 
-  // expose the functions you want the text adventure to use in the return object
   return {
     hello: hello
   };

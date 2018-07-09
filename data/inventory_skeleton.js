@@ -1,3 +1,8 @@
+/* 
+  This is an example inventory object which can be passed to the Text Adventure engine. 
+  The inventory object sets the starting inventory of the player in the game.
+  See the README document for more information.
+*/
 var inventory = {
   "object_id": {
     name: "object name",

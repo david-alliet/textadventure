@@ -40,7 +40,35 @@ var locations = {
         function_call: "function_name",
         function_parameters: "value"
       }
-    }
+    },
+    prompts: {
+      "promptid": {
+        prompt_text: "The question shown to the player",
+        responses: {
+          "response1id": {
+            valid_commands: ["response", "response variation"],
+            response_text: "Text shown when the player chooses this response",
+            goto_location: "locationid",
+            response_trigger: {
+              function_call: "function_name",
+              function_parameters: "value"
+            }
+          },
+          "response2id": {
+            valid_commands: ["response", "response variation"],
+            response_text: "Text shown when the player chooses this response",
+            goto_location: "locationid",
+            response_trigger: {
+              function_call: "function_name",
+              function_parameters: "value"
+            }
+          }
+        },
+        has_prompted: false,
+        can_repeat: true,
+        prompt_conditions: ["locationid.promptid.responseid"]
+      }
+    },
   },
   startlocation: "location_id"
 };
