@@ -2,13 +2,13 @@ function TextAdventure(containerId, options, locationsData, victoryConditions, s
 
   // properties and gamedata of the Text Adventure
   this.locations = {};
-  this.newGameLocations = locationsData;      // copy of the initial locations object to use when restarting
-  this.newStartingInventory = startingInventory;  // copy of initial starting inventory to use when restarting
+  this.newGameLocations = JSON.stringify(locationsData);      // copy of the initial locations object to use when restarting
+  this.newStartingInventory = JSON.stringify(startingInventory);  // copy of initial starting inventory to use when restarting
   this.victoryConditions = victoryConditions;
   this.options = options;
   this.player;
   this.extensions;
-  
+
   // game essential variables
   this.usedObjects = [];   // Stores list of used objects so victory conditions can be checked
   this.promptMode = false; // sets the game in prompt mode when needed
@@ -108,25 +108,25 @@ function TextAdventure(containerId, options, locationsData, victoryConditions, s
   this.inputField.addEventListener("keypress", function(e){
     if(e.keyCode===13) {
       // User hit enter, sending the command to the parser
-      TextAdventure.parseCommand(this.value);
+      this.parseCommand(e.target.value);
       // empty the input field
-      inputField.value="";
+      this.inputField.value="";
     }
-  }, true);
+  }.bind(this), true);
 
   this.inputField.addEventListener("keydown", function(e){
     // up arrow = 38
     // down arrow = 40
     if(e.keyCode===38) {
       // user hit up arrow key: show previously typed commands:
-      TextAdventure.showTypedCommand(-1);
+      this.showTypedCommand(-1);
     }
 
     if(e.keyCode===40) {
       // user hit down arrow: show next command in queue
-      TextAdventure.showTypedCommand(1);
+      this.showTypedCommand(1);
     }
-  }, true);
+  }.bind(this), true);
 
   // append input to container
   inputContainer.appendChild(this.inputField);
@@ -178,11 +178,13 @@ TextAdventure.prototype.start = function() {
     }
 
   } else {
-    debug("No local save available, setting up new game");
+    this.debug("No local save available, setting up new game");
     // no save available, loading in new locations
-    this.locations = this.newGameLocations;
+    this.locations = JSON.parse(this.newGameLocations);
     // Initialize player with starting inventory and location
-    this.player = new Player(this.newStartingInventory, this.locations.startLocation);
+    console.log(this.locations);
+    console.log(this.locations.startlocation);
+    this.player = new Player(JSON.parse(this.newStartingInventory), this.locations.startlocation);
   }
 
   this.checkForVictory();
@@ -190,6 +192,8 @@ TextAdventure.prototype.start = function() {
   // when a save has been loaded, it's good to check for victory on init.
   if(!this.gameVictory) {
     // print the current location text:
+    console.log(this.locations["start"]);
+    console.log(this.player);
     this.printLine(this.locations[this.player.getLocation()].text_on_visit);
     // mark this location as visited (although it might already be)
     this.locations[this.player.getLocation()].visited = true;
@@ -1021,9 +1025,9 @@ TextAdventure.prototype.resolvedDependency = function(oId) {
 */ 
 TextAdventure.prototype.saveProgress = function(){
   if(this.canStore) {
-    this.storage.setObject("TA_LOCATIONS", locations);
-    this.storage.setObject("TA_INVENTORY", player.getInventory());
-    this.storage.setItem("TA_CURRENTLOCATION", player.getLocation());
+    this.storage.setObject("TA_LOCATIONS", this.locations);
+    this.storage.setObject("TA_INVENTORY", this.player.getInventory());
+    this.storage.setItem("TA_CURRENTLOCATION", this.player.getLocation());
   }
 };
 
@@ -1050,6 +1054,8 @@ TextAdventure.prototype.restart = function() {
     this.storage.removeItem("TA_CURRENTLOCATION");
   }
 
+  this.inputField.disabled = false;
+
   // restart:
   this.start();
 };
@@ -1066,7 +1072,7 @@ TextAdventure.prototype.trigger = function(obj, trig) {
   if(obj[trig]!==undefined) {
     this.debug("Trigger "+ trig +" found");
     if(obj[trig].function_call !== undefined && obj[trig].function_call !== "")
-    this.extensions[obj[trig].function_call](obj[trig].function_parameters);
+    this.extensions[obj[trig].function_call](obj[trig].function_parameters, this);
   }
 };
 
@@ -1178,7 +1184,7 @@ TextAdventure.prototype.printLine = function(textToPrint, classToPrint) {
 
     // scroll the item into view with an animation when there is an absolute height set in options
     window.clearInterval(this.timer);
-    this.timer = window.setInterval(this.animateScroll, this.timerInterval);
+    this.timer = window.setInterval(this.animateScroll, this.timerInterval, this);
   }
 }
 
@@ -1186,13 +1192,15 @@ TextAdventure.prototype.printLine = function(textToPrint, classToPrint) {
 
 /* 
   Scrolls the text adventure window up to the latest message
+  ---
+  e   reference to the TextAdventure object calling the function
 */
-TextAdventure.prototype.animateScroll = function(){
+TextAdventure.prototype.animateScroll = function(e){
   // scroll container up
-  if(this.outputContainer.clientHeight >= (this.outputContainer.scrollHeight - this.outputContainer.scrollTop))
-    window.clearInterval(this.timer);
+  if(e.outputContainer.clientHeight >= (e.outputContainer.scrollHeight - e.outputContainer.scrollTop))
+    window.clearInterval(e.timer);
   else
-    this.outputContainer.scrollTop+=2;
+    e.outputContainer.scrollTop+=2;
 
   /* 
   todo :
@@ -1251,7 +1259,7 @@ TextAdventure.prototype.buildDefinitionList = function(list) {
   ---
   e   The extension object
 */
-TextAdventure.prototype.addExtension = function(e) {
+TextAdventure.prototype.extend = function(e) {
   this.extensions = e;
 };
 

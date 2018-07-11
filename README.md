@@ -151,3 +151,5 @@ Victory conditions are how the game engine can tell if a player has reached the 
 * ``has_responded`` Array containing a list of responses the player must have taken. These responses must be formatted in the following way: ``locationid.promptid.responseid``. Prompts can be nested, you can address nested prompts by adding on ``promptid.responseid`` as needed.
 
 ``victory_text`` String set on the victory conditions object. Provides the text shown to the player when she has finished the game. You can use HTML formatting.
+
+``victory_trigger`` Trigger that can be called when the game detects all conditions are met.
