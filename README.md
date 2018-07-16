@@ -30,8 +30,7 @@ The game can be extended with extra functionality. You can program your own java
 ### Initialization code
 
 ```
-var MyGame = Object.create(TextAdventure);
-MyGame.init("ContainerId", options, locations, victory_conditions, inventory);
+var MyGame = new TextAdventure("ContainerId", options, locations, victory_conditions, inventory);
 ```
 
 * ```ContainerId``` Required. String containing the id of the div you want the game to render in;
@@ -72,9 +71,10 @@ trigger: {
 
 The name defined in ```function_call``` is the name of a publicly available function in your extend object. The value of ```function_parameters``` is passed to the function. This value can be any basic javascript data type valid in JSON: numbers, strings, arrays and even full JSON objects; as long as you make sure your callback function properly handles the parameter passed to it.
 
+The function gets passed a reference to the TextAdventure object as second parameter. You can use the second paramter to control the TextAdventure directly (e.g. to print out an extra line).  
+
 There are different triggers which can be called at different moments. These are the supported triggers and when they are executed:
 
-**Objects**
 * ```use_trigger``` Set on an object, triggers when the object is used
 * ```pickup_trigger``` Set on an object, triggers when the object is picked up
 * ```examine_trigger``` Set on an object, triggers when the object is examined

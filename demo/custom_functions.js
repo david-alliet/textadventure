@@ -1,9 +1,7 @@
 var TAExtension = (function () {
 
-  t = "";
-
-  function hello(n) {
-    console.log("Hello " + n +"!");
+  function hello(n, ta) {
+    ta.printLine("Hello " + n +"!");
   }
 
   return {
